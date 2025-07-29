@@ -8,9 +8,27 @@
     body { font-family: Arial, sans-serif; padding: 20px; background: #f8f8f8; }
     h2 { margin-bottom: 20px; }
     input, button, select { padding: 10px; margin: 5px; }
-    .project-item { background: #fff; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }
-    .project-item button { margin-left: 10px; }
-    #statusBar { position: fixed; top: 0; right: 0; padding: 10px; background: #eee; font-size: 0.9em; }
+    .project-item {
+      background: #fff;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .project-controls {
+      display: flex;
+      gap: 8px;
+    }
+    #statusBar {
+      position: fixed;
+      top: 0; right: 0;
+      padding: 10px;
+      background: #eee;
+      font-size: 0.9em;
+    }
   </style>
 </head>
 <body>
@@ -31,11 +49,10 @@
 
   <div id="projectList"><p>Loading projects...</p></div>
 
-  <!-- Firebase SDKs (latest to avoid CORB) -->
+  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-auth-compat.js"></script>
-
+  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-auth-compat.js"></script>
 
   <script>
     const DEV_MODE = true;
@@ -49,11 +66,9 @@
       appId: "1:676439686152:web:0fdc2d8aab41aec67fa5bd"
     };
 
-    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // Load projects on page load
     window.onload = () => {
       loadProjects();
     };
@@ -86,8 +101,11 @@
       div.className = "project-item";
       div.dataset.projectId = doc.id;
       div.innerHTML = `
+        <div class="project-controls">
+          <button onclick="goToProject('${doc.id}')">Open</button>
+          <button onclick="deleteProject('${doc.id}', '${data.name}')">🗑️</button>
+        </div>
         <strong>${data.name}</strong>
-        <button onclick="goToProject('${doc.id}')">Open</button>
       `;
       document.getElementById("projectList").appendChild(div);
     }
@@ -108,6 +126,19 @@
       }
     }
 
+    async function deleteProject(projectId, name) {
+      const confirmDelete = confirm(`Delete project "${name}"? This cannot be undone.`);
+      if (!confirmDelete) return;
+
+      try {
+        await db.collection("projects").doc(projectId).delete();
+        alert(`🗑️ Project "${name}" deleted.`);
+        loadProjects();
+      } catch (error) {
+        alert("❌ Failed to delete project: " + error.message);
+      }
+    }
+
     function goToProject(projectId) {
       window.location.href = `map.html?projectId=${projectId}`;
     }
@@ -115,7 +146,7 @@
     function filterProjects() {
       const selected = document.getElementById("filterSelect").value;
       document.querySelectorAll(".project-item").forEach(item => {
-        item.style.display = selected === "all" || item.dataset.projectId === selected ? "block" : "none";
+        item.style.display = selected === "all" || item.dataset.projectId === selected ? "flex" : "none";
       });
     }
   </script>
