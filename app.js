@@ -82,3 +82,31 @@ map.on(L.Draw.Event.CREATED, function (e) {
       });
       alert("✅ Segment saved!");
       location.reload();
+    } catch (err) {
+      alert("❌ Error: " + err.message);
+    }
+  };
+});
+
+// Load existing segments
+async function loadSegments() {
+  const snapshot = await db.collection("segments").where("projectId", "==", projectId).get();
+  snapshot.forEach(doc => {
+    const data = doc.data();
+    const layer = L.geoJSON(data.geojson, {
+      style: {
+        color: data.status === "Located" ? "green" :
+               data.status === "In Progress" ? "orange" : "red",
+        weight: 4
+      }
+    }).addTo(statusLayers[data.status]);
+    layer.bindPopup(`
+      <strong>Ticket:</strong> ${data.ticketNumber}<br/>
+      <strong>Location:</strong> ${data.location}<br/>
+      <strong>Status:</strong> ${data.status}
+    `);
+  });
+}
+
+// 🔧 TEMP: Bypass login
+loadSegments();
