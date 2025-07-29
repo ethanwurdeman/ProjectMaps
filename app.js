@@ -1,4 +1,8 @@
 // Firebase Initialization
+if (typeof firebase === "undefined") {
+  document.body.innerHTML = '<h2 style="color:red">❌ Firebase SDK not loaded in app.js. Check map.html script order.</h2>';
+  throw new Error("Firebase SDK not loaded");
+}
 const firebaseConfig = {
   apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
   authDomain: "projectmap-35a69.firebaseapp.com",
