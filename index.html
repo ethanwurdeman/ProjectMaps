@@ -1,55 +1,39 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Welcome – ProjectMap</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to ProjectMap</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
-      margin: 0;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
       font-family: Arial, sans-serif;
-      background-color: #e6edf4;
-      color: #333;
-    }
-
-    h1 {
-      font-size: 2rem;
-      margin-bottom: 0.5rem;
-    }
-
-    p {
-      font-size: 1.1rem;
-      margin-bottom: 2rem;
       text-align: center;
-      max-width: 400px;
+      background: #f0f0f0;
+      padding: 100px;
     }
-
-    a {
-      padding: 12px 24px;
-      background: #ffffff;
-      color: #0078d4;
-      text-decoration: none;
-      border-radius: 6px;
-      font-weight: bold;
-      font-size: 1rem;
-      transition: background 0.2s ease;
+    h1 {
+      font-size: 2em;
     }
-
-    a:hover {
-      background: #dfeeff;
+    p {
+      margin: 20px 0;
+    }
+    button {
+      padding: 15px 25px;
+      font-size: 1em;
+      background-color: #1976d2;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #135ba1;
     }
   </style>
 </head>
 <body>
   <h1>🚧 Welcome to ProjectMap</h1>
-  <p>
-    Track, manage, and collaborate on utility locating and excavation projects with ease.
-  </p>
-  <a href="login.html">➡️ Sign In to Continue</a>
+  <p>Track road work projects with ease.</p>
+  <button onclick="window.location.href='dashboard.html'">Sign In</button>
 </body>
 </html>
