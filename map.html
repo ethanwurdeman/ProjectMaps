@@ -17,16 +17,16 @@
 <body>
   <div id="map"></div>
 
-  <!-- ✅ Firebase SDKs (Must come first!) -->
+  <!-- ✅ Firebase SDKs – load FIRST, without integrity/crossorigin -->
   <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-auth-compat.js"></script>
 
-  <!-- ✅ Leaflet JS -->
+  <!-- ✅ Leaflet & Draw -->
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 
-  <!-- ✅ Your App Logic (must come last!) -->
+  <!-- ✅ Your app logic -->
   <script src="app.js"></script>
 </body>
 </html>
