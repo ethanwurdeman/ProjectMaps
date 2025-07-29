@@ -4,81 +4,82 @@
   <title>Project Map</title>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+
   <style>
-    html, body, #map {
-      height: 100%;
+    body, html {
       margin: 0;
       padding: 0;
+      height: 100%;
+      display: flex;
+      font-family: Arial, sans-serif;
     }
 
-    #sidePanel {
-      position: absolute;
-      left: 0;
-      top: 0;
-      bottom: 0;
+    #sidebar {
       width: 300px;
-      background: #fff;
+      background: #f4f4f4;
       padding: 15px;
-      border-right: 1px solid #ccc;
       overflow-y: auto;
-      display: none;
-      z-index: 1000;
+      border-right: 1px solid #ccc;
     }
 
-    #togglePanelBtn {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      z-index: 1001;
-      background: #007bff;
-      color: white;
-      border: none;
-      padding: 8px 12px;
-      cursor: pointer;
-      border-radius: 4px;
+    #map {
+      flex: 1;
+      height: 100%;
     }
 
     .project-item {
-      display: flex;
-      justify-content: space-between;
-      margin: 8px 0;
-      padding: 6px;
-      border: 1px solid #ccc;
+      padding: 8px;
+      margin-bottom: 8px;
+      background: white;
+      border: 1px solid #ddd;
       border-radius: 4px;
-      background: #f2f2f2;
     }
 
     .project-item button {
-      margin-left: 5px;
+      margin-right: 6px;
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+
+    .status {
+      font-size: 0.85em;
+      color: #666;
     }
   </style>
 </head>
 <body>
+  <div id="sidebar">
+    <h2>🗂 Projects</h2>
 
-  <div id="sidePanel">
-    <h3>📁 Projects</h3>
-    <input type="text" id="newProjectName" placeholder="New Project Name" />
-    <button onclick="createProject()">➕ Create</button>
-    <br/><br/>
-    <label><input type="checkbox" id="showArchivedToggle" onchange="loadProjects()" /> Show Archived</label>
-    <div id="projectList">Loading...</div>
+    <div>
+      <input type="text" id="newProjectName" placeholder="New Project Name" style="width: 100%; margin-bottom: 10px;" />
+      <button onclick="createProject()">➕ Create</button>
+      <button onclick="toggleArchived()">
+        🔁 Toggle Archived
+      </button>
+    </div>
+
+    <div id="projectList"><p>Loading...</p></div>
   </div>
 
-  <button id="togglePanelBtn" onclick="togglePanel()">☰ Dashboard</button>
   <div id="map"></div>
 
-  <!-- ✅ Firebase SDKs (match your working version) -->
+  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 
-  <!-- ✅ Leaflet & Draw -->
+  <!-- Leaflet + Draw -->
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 
-  <!-- ✅ App Logic -->
+  <!-- App Logic -->
   <script src="app.js"></script>
 </body>
 </html>
