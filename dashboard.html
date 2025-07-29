@@ -13,33 +13,20 @@
     .project-item button { margin-left: 10px; }
     #statusBar { position: fixed; top: 0; right: 0; padding: 10px; background: #eee; font-size: 0.9em; }
   </style>
-</head>
-<body>
-  <div id="statusBar">🔓 Development Mode (no login)</div>
-  <h2>🛠 Admin Project Dashboard</h2>
 
-  <div>
-    <input type="text" id="newProjectName" placeholder="New Project Name" />
-    <button onclick="createProject()">➕ Create Project</button>
-  </div>
+  <!-- ✅ Firebase SDKs with defer -->
+  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore-compat.js" defer></script>
 
-  <div>
-    <label for="filterSelect">Filter by Project:</label>
-    <select id="filterSelect" onchange="filterProjects()">
-      <option value="all">All Projects</option>
-    </select>
-  </div>
+  <!-- ✅ Your script (also with defer, after Firebase) -->
+  <script defer>
+    const DEV_MODE = true;
 
-  <div id="projectList"></div>
-
-  <!-- ✅ Firebase SDKs FIRST -->
-  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore-compat.js"></script>
-
-  <!-- ✅ Your script AFTER Firebase loads -->
-  <script>
-    window.onload = async () => {
-      const DEV_MODE = true;
+    document.addEventListener("DOMContentLoaded", async () => {
+      if (typeof firebase === 'undefined') {
+        document.body.innerHTML = '<h2 style="color:red">❌ Firebase SDK not loaded. Check your internet connection or script tags.</h2>';
+        return;
+      }
 
       const firebaseConfig = {
         apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
@@ -49,11 +36,6 @@
         messagingSenderId: "676439686152",
         appId: "1:676439686152:web:0fdc2d8aab41aec67fa5bd"
       };
-
-      if (typeof firebase === "undefined") {
-        document.body.innerHTML = '<h2 style="color:red">❌ Firebase SDK not loaded. Check your internet connection or script tags.</h2>';
-        return;
-      }
 
       firebase.initializeApp(firebaseConfig);
       const db = firebase.firestore();
@@ -112,9 +94,26 @@
         });
       }
 
-      // ✅ Load projects on start
       await loadProjects();
-    };
+    });
   </script>
+</head>
+<body>
+  <div id="statusBar">🔓 Development Mode (no login)</div>
+  <h2>🛠 Admin Project Dashboard</h2>
+
+  <div>
+    <input type="text" id="newProjectName" placeholder="New Project Name" />
+    <button onclick="createProject()">➕ Create Project</button>
+  </div>
+
+  <div>
+    <label for="filterSelect">Filter by Project:</label>
+    <select id="filterSelect" onchange="filterProjects()">
+      <option value="all">All Projects</option>
+    </select>
+  </div>
+
+  <div id="projectList"></div>
 </body>
 </html>
