@@ -1,106 +1,21 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Admin Dashboard – ProjectMap</title>
+  <title>Project Dashboard – ProjectMap</title>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; background: #f8f8f8; }
     h2 { margin-bottom: 20px; }
-    #projectList { margin-top: 20px; }
     input, button, select { padding: 10px; margin: 5px; }
     .project-item { background: #fff; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }
     .project-item button { margin-left: 10px; }
     #statusBar { position: fixed; top: 0; right: 0; padding: 10px; background: #eee; font-size: 0.9em; }
   </style>
-
-  <!-- ✅ Firebase SDKs with defer -->
-  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js" defer></script>
-  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore-compat.js" defer></script>
-
-  <!-- ✅ Your script (also with defer, after Firebase) -->
-  <script defer>
-    const DEV_MODE = true;
-
-    document.addEventListener("DOMContentLoaded", async () => {
-      if (typeof firebase === 'undefined') {
-        document.body.innerHTML = '<h2 style="color:red">❌ Firebase SDK not loaded. Check your internet connection or script tags.</h2>';
-        return;
-      }
-
-      const firebaseConfig = {
-        apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
-        authDomain: "projectmap-35a69.firebaseapp.com",
-        projectId: "projectmap-35a69",
-        storageBucket: "projectmap-35a69.appspot.com",
-        messagingSenderId: "676439686152",
-        appId: "1:676439686152:web:0fdc2d8aab41aec67fa5bd"
-      };
-
-      firebase.initializeApp(firebaseConfig);
-      const db = firebase.firestore();
-
-      if (!DEV_MODE) {
-        document.getElementById('statusBar').style.display = 'none';
-      }
-
-      async function loadProjects() {
-        const list = document.getElementById("projectList");
-        const filterSelect = document.getElementById("filterSelect");
-        list.innerHTML = "<h3>📁 Existing Projects</h3>";
-        filterSelect.innerHTML = '<option value="all">All Projects</option>';
-
-        const snapshot = await db.collection("projects").get();
-        snapshot.forEach(doc => {
-          const option = document.createElement("option");
-          option.value = doc.id;
-          option.text = doc.data().name;
-          filterSelect.appendChild(option);
-          renderProject(doc);
-        });
-      }
-
-      function renderProject(doc) {
-        const data = doc.data();
-        const div = document.createElement("div");
-        div.className = "project-item";
-        div.dataset.projectId = doc.id;
-        div.innerHTML = `
-          <strong>${data.name}</strong>
-          <button onclick="goToProject('${doc.id}')">Open</button>
-        `;
-        document.getElementById("projectList").appendChild(div);
-      }
-
-      window.createProject = async function () {
-        const name = document.getElementById("newProjectName").value.trim();
-        if (!name) return alert("Enter project name");
-        const ref = await db.collection("projects").add({
-          name: name,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-          createdBy: DEV_MODE ? "dev_user" : "auth_user"
-        });
-        window.location.href = `map.html?projectId=${ref.id}`;
-      }
-
-      window.goToProject = function (projectId) {
-        window.location.href = `map.html?projectId=${projectId}`;
-      }
-
-      window.filterProjects = function () {
-        const selected = document.getElementById("filterSelect").value;
-        document.querySelectorAll(".project-item").forEach(item => {
-          item.style.display = (selected === "all" || item.dataset.projectId === selected) ? "block" : "none";
-        });
-      }
-
-      await loadProjects();
-    });
-  </script>
 </head>
 <body>
-  <div id="statusBar">🔓 Development Mode (no login)</div>
-  <h2>🛠 Admin Project Dashboard</h2>
+  <div id="statusBar">🔓 Development Mode (login bypassed)</div>
+  <h2>📊 Project Dashboard</h2>
 
   <div>
     <input type="text" id="newProjectName" placeholder="New Project Name" />
@@ -114,6 +29,73 @@
     </select>
   </div>
 
-  <div id="projectList"></div>
-</body>
-</html>
+  <div id="projectList"><p>Loading projects...</p></div>
+
+  <!-- Firebase SDKs (latest to avoid CORB) -->
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore-compat.js"></script>
+
+  <script>
+    const DEV_MODE = true;
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
+      authDomain: "projectmap-35a69.firebaseapp.com",
+      projectId: "projectmap-35a69",
+      storageBucket: "projectmap-35a69.appspot.com",
+      messagingSenderId: "676439686152",
+      appId: "1:676439686152:web:0fdc2d8aab41aec67fa5bd"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Load projects on page load
+    window.onload = () => {
+      loadProjects();
+    };
+
+    async function loadProjects() {
+      const list = document.getElementById("projectList");
+      const filterSelect = document.getElementById("filterSelect");
+
+      list.innerHTML = "<h3>📁 Existing Projects</h3>";
+      filterSelect.innerHTML = '<option value="all">All Projects</option>';
+
+      try {
+        const snapshot = await db.collection("projects").get();
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const option = document.createElement("option");
+          option.value = doc.id;
+          option.text = data.name;
+          filterSelect.appendChild(option);
+          renderProject(doc);
+        });
+      } catch (error) {
+        list.innerHTML = `<p style="color:red">❌ Error loading projects: ${error.message}</p>`;
+      }
+    }
+
+    function renderProject(doc) {
+      const data = doc.data();
+      const div = document.createElement("div");
+      div.className = "project-item";
+      div.dataset.projectId = doc.id;
+      div.innerHTML = `
+        <strong>${data.name}</strong>
+        <button onclick="goToProject('${doc.id}')">Open</button>
+      `;
+      document.getElementById("projectList").appendChild(div);
+    }
+
+    async function createProject() {
+      const name = document.getElementById("newProjectName").value.trim();
+      if (!name) return alert("Enter project name");
+
+      try {
+        const ref = await db.collection("projects").add({
+          name,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          createdBy: DEV_MODE ? "dev_
