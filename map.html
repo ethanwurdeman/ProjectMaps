@@ -12,23 +12,73 @@
       margin: 0;
       padding: 0;
     }
+
+    #sidePanel {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 300px;
+      background: #fff;
+      padding: 15px;
+      border-right: 1px solid #ccc;
+      overflow-y: auto;
+      display: none;
+      z-index: 1000;
+    }
+
+    #togglePanelBtn {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1001;
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    .project-item {
+      display: flex;
+      justify-content: space-between;
+      margin: 8px 0;
+      padding: 6px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #f2f2f2;
+    }
+
+    .project-item button {
+      margin-left: 5px;
+    }
   </style>
 </head>
 <body>
+
+  <div id="sidePanel">
+    <h3>📁 Projects</h3>
+    <input type="text" id="newProjectName" placeholder="New Project Name" />
+    <button onclick="createProject()">➕ Create</button>
+    <br/><br/>
+    <label><input type="checkbox" id="showArchivedToggle" onchange="loadProjects()" /> Show Archived</label>
+    <div id="projectList">Loading...</div>
+  </div>
+
+  <button id="togglePanelBtn" onclick="togglePanel()">☰ Dashboard</button>
   <div id="map"></div>
 
-  <!-- ✅ Firebase SDKs – load FIRST, without integrity/crossorigin -->
+  <!-- ✅ Firebase SDKs (match your working version) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-
-
 
   <!-- ✅ Leaflet & Draw -->
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 
-  <!-- ✅ Your app logic -->
-  <script src="app.js?v=2"></script>
+  <!-- ✅ App Logic -->
+  <script src="app.js"></script>
 </body>
 </html>
