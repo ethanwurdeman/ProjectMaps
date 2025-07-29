@@ -116,36 +116,46 @@ const drawControl = new L.Control.Draw({
 });
 map.addControl(drawControl);
 
+// --- FIXED: Draw Event with reliable popup submission ---
 map.on(L.Draw.Event.CREATED, function (e) {
   const layer = e.layer;
   let geojson = layer.toGeoJSON();
-  if (!geojson.properties) geojson.properties = {}; // Ensure 'properties' exists
+  if (!geojson.properties) geojson.properties = {};
 
-  // Popup form
-  const popupDiv = document.createElement("div");
-  popupDiv.innerHTML = `
-    <strong>Ticket #</strong><br/>
-    <input id="ticketInput" /><br/>
-    <strong>Location</strong><br/>
-    <input id="locationInput" /><br/>
-    <strong>Status</strong><br/>
-    <select id="statusInput">
-      <option value="Not Located">Not Located</option>
-      <option value="In Progress">In Progress</option>
-      <option value="Located">Located</option>
-    </select><br/>
-    <button id="submitSegment">Submit</button>
+  drawnItems.addLayer(layer); // always add drawn feature to map
+
+  // Use a unique ID so event handler always attaches to the right popup
+  const uniqueId = `submitSegment_${Date.now()}_${Math.floor(Math.random()*10000)}`;
+  const popupHtml = `
+    <div style="min-width:180px">
+      <strong>Ticket #</strong><br/>
+      <input id="ticketInput" style="width:95%" /><br/>
+      <strong>Location</strong><br/>
+      <input id="locationInput" style="width:95%" /><br/>
+      <strong>Status</strong><br/>
+      <select id="statusInput" style="width:100%">
+        <option value="Not Located">Not Located</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Located">Located</option>
+      </select><br/>
+      <button id="${uniqueId}" style="margin-top:6px;width:100%">Submit</button>
+    </div>
   `;
-  layer.bindPopup(popupDiv).openPopup();
+  layer.bindPopup(popupHtml).openPopup();
 
-  // Wait until popup is added to DOM
+  // Wait for the popup to actually exist in the DOM:
   setTimeout(() => {
-    const btn = popupDiv.querySelector("#submitSegment");
+    const btn = document.getElementById(uniqueId);
     if (btn) {
       btn.onclick = async () => {
-        const ticket = popupDiv.querySelector("#ticketInput").value;
-        const locationVal = popupDiv.querySelector("#locationInput").value;
-        const status = popupDiv.querySelector("#statusInput").value;
+        const ticket = document.getElementById("ticketInput").value;
+        const locationVal = document.getElementById("locationInput").value;
+        const status = document.getElementById("statusInput").value;
+
+        if (!ticket || !locationVal) {
+          alert("Please fill in ticket and location!");
+          return;
+        }
 
         try {
           await db.collection("segments").add({
@@ -163,7 +173,7 @@ map.on(L.Draw.Event.CREATED, function (e) {
         }
       };
     }
-  }, 100);
+  }, 200);
 });
 
 async function loadSegments() {
