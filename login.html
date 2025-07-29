@@ -1,64 +1,33 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
   <title>Login – ProjectMap</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      background: #eef2f7;
-    }
-
-    h2 {
-      margin-bottom: 20px;
-    }
-
-    input {
-      padding: 10px;
-      margin: 8px 0;
-      width: 250px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-
-    button {
-      padding: 10px 20px;
-      background: #0078d4;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: #005fa3;
-    }
-
-    #error {
-      color: red;
-      margin-top: 10px;
-    }
+    body { font-family: Arial, sans-serif; background: #eef2f5; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    .login-box { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 300px; }
+    h2 { text-align: center; }
+    input { width: 100%; padding: 10px; margin: 10px 0; }
+    button { width: 100%; padding: 10px; background: #4CAF50; color: white; border: none; cursor: pointer; }
+    #error { color: red; margin-top: 10px; text-align: center; }
   </style>
 </head>
 <body>
-  <h2>🔐 ProjectMap Login</h2>
-  <input type="email" id="email" placeholder="Email" />
-  <input type="password" id="password" placeholder="Password" />
-  <button onclick="signIn()">Sign In</button>
-  <div id="error"></div>
+  <div class="login-box">
+    <h2>Sign In</h2>
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <button onclick="signIn()">Sign In</button>
+    <div id="error"></div>
+  </div>
 
-  <!-- Firebase SDKs -->
+  <!-- ✅ Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-auth-compat.js"></script>
 
   <script>
-    // ✅ Your Firebase config
+    // ✅ Initialize Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
       authDomain: "projectmap-35a69.firebaseapp.com",
@@ -71,7 +40,7 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
 
-    // ✅ Sign-in handler
+    // ✅ Sign-in Function
     async function signIn() {
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
@@ -80,8 +49,8 @@
       try {
         await auth.signInWithEmailAndPassword(email, password);
         window.location.href = "dashboard.html";
-      } catch (error) {
-        errorDiv.textContent = error.message;
+      } catch (err) {
+        errorDiv.textContent = err.message;
       }
     }
   </script>
