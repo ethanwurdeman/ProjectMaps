@@ -1,15 +1,21 @@
-<!DOCTYPE html>
+\<!DOCTYPE html>
 <html>
 <head>
   <title>Dashboard – ProjectMap</title>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; background: #f4f4f4; }
+    body { font-family: Arial, sans-serif; background: #f8f8f8; padding: 20px; }
     h2 { margin-bottom: 20px; }
     #projectList { margin-top: 20px; }
     input, button, select { padding: 10px; margin: 5px; }
-    .project-item { background: #fff; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }
+    .project-item {
+      background: #fff;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
     .project-item button { margin-left: 10px; }
   </style>
 </head>
@@ -30,11 +36,12 @@
 
   <div id="projectList">Loading projects...</div>
 
-  <!-- Firebase SDK -->
+  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore-compat.js"></script>
 
-  <script>
+  <!-- Your App Script -->
+  <script defer>
     const firebaseConfig = {
       apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
       authDomain: "projectmap-35a69.firebaseapp.com",
@@ -43,6 +50,7 @@
       messagingSenderId: "676439686152",
       appId: "1:676439686152:web:0fdc2d8aab41aec67fa5bd"
     };
+
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
@@ -77,10 +85,12 @@
     async function createProject() {
       const name = document.getElementById("newProjectName").value.trim();
       if (!name) return alert("Enter project name");
+
       const ref = await db.collection("projects").add({
         name: name,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
+
       window.location.href = `map.html?projectId=${ref.id}`;
     }
 
@@ -92,12 +102,12 @@
       const selected = document.getElementById("filterSelect").value;
       document.querySelectorAll(".project-item").forEach(item => {
         item.style.display = selected === "all" || item.dataset.projectId === selected
-          ? "block" : "none";
+          ? "block"
+          : "none";
       });
     }
 
-    // Run immediately
-    loadProjects();
+    window.addEventListener("DOMContentLoaded", loadProjects);
   </script>
 </body>
 </html>
