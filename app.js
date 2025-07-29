@@ -145,35 +145,47 @@ map.on(L.Draw.Event.CREATED, function (e) {
 
   // Wait for the popup to actually exist in the DOM:
   setTimeout(() => {
-    const btn = document.getElementById(uniqueId);
-    if (btn) {
-      btn.onclick = async () => {
-        const ticket = document.getElementById("ticketInput").value;
-        const locationVal = document.getElementById("locationInput").value;
-        const status = document.getElementById("statusInput").value;
+  const btn = document.getElementById(uniqueId);
+  if (btn) {
+    btn.onclick = async () => {
+      const ticket = document.getElementById("ticketInput").value;
+      const locationVal = document.getElementById("locationInput").value;
+      const status = document.getElementById("statusInput").value;
 
-        if (!ticket || !locationVal) {
-          alert("Please fill in ticket and location!");
-          return;
-        }
+      if (!ticket || !locationVal) {
+        alert("Please fill in ticket and location!");
+        return;
+      }
 
-        try {
-          await db.collection("segments").add({
-            projectId: currentProjectId,
-            ticketNumber: ticket,
-            location: locationVal,
-            status,
-            geojson: JSON.stringify(geojson),
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-          });
-          alert("✅ Segment saved!");
-          location.reload();
-        } catch (err) {
-          alert("❌ Error: " + err.message);
-        }
-      };
-    }
-  }, 200);
+      // Diagnostic log to check what will be saved
+      let geojsonString = "";
+      try {
+        geojsonString = JSON.stringify(geojson);
+        // Let's also prove that it is a string, not an object!
+        console.log("geojson typeof:", typeof geojsonString, geojsonString);
+      } catch (err) {
+        alert("GeoJSON could not be stringified!");
+        return;
+      }
+
+      try {
+        await db.collection("segments").add({
+          projectId: currentProjectId,
+          ticketNumber: ticket,
+          location: locationVal,
+          status,
+          geojson: geojsonString, // absolutely a string!
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        alert("✅ Segment saved!");
+        location.reload();
+      } catch (err) {
+        alert("❌ Error: " + err.message);
+      }
+    };
+  }
+}, 200);
+
 });
 
 async function loadSegments() {
