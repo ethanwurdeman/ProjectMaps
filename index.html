@@ -1,37 +1,52 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Welcome – ProjectMap</title>
-  <meta charset="UTF-8" />
+  <title>Welcome to ProjectMaps</title>
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #0078d4, #00b4d8);
+      color: white;
       display: flex;
       flex-direction: column;
-      justify-content: center;
       align-items: center;
+      justify-content: center;
       height: 100vh;
-      background: #e8f0fe;
       margin: 0;
+      text-align: center;
     }
-    h1 { font-size: 2em; margin-bottom: 10px; }
-    p { font-size: 1.1em; margin-bottom: 30px; max-width: 500px; text-align: center; }
-    button {
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+    }
+
+    p {
+      font-size: 1.2rem;
+      margin-bottom: 30px;
+    }
+
+    a {
       padding: 12px 24px;
-      font-size: 16px;
-      background-color: #1a73e8;
-      color: white;
-      border: none;
+      background: #ffffff;
+      color: #0078d4;
+      text-decoration: none;
       border-radius: 6px;
-      cursor: pointer;
+      font-weight: bold;
+      font-size: 1rem;
+      transition: background 0.2s ease;
     }
-    button:hover {
-      background-color: #155acb;
+
+    a:hover {
+      background: #e2e2e2;
     }
   </style>
 </head>
 <body>
-  <h1>🚧 Welcome to ProjectMap</h1>
-  <p>Track, manage, and collaborate on utility locating and excavation projects with ease.</p>
-  <button onclick="location.href='login.htm
+  <h1>Welcome to ProjectMaps</h1>
+  <p>Your interactive map tool for tracking road work and locator updates.</p>
+  <a href="login.html">🚪 Sign In to Continue</a>
+</body>
+</html>
