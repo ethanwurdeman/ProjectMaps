@@ -2,15 +2,43 @@
 <html>
 <head>
   <title>Login – ProjectMap</title>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body { font-family: Arial, sans-serif; background: #eef2f5; display: flex; justify-content: center; align-items: center; height: 100vh; }
-    .login-box { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 300px; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #eef2f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .login-box {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      width: 300px;
+    }
     h2 { text-align: center; }
-    input { width: 100%; padding: 10px; margin: 10px 0; }
-    button { width: 100%; padding: 10px; background: #4CAF50; color: white; border: none; cursor: pointer; }
-    #error { color: red; margin-top: 10px; text-align: center; }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    #error {
+      color: red;
+      margin-top: 10px;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -22,12 +50,12 @@
     <div id="error"></div>
   </div>
 
-  <!-- ✅ Firebase SDKs -->
+  <!-- ✅ Load Firebase SDKs FIRST -->
   <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-auth-compat.js"></script>
 
+  <!-- ✅ Then initialize Firebase and run app logic -->
   <script>
-    // ✅ Initialize Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
       authDomain: "projectmap-35a69.firebaseapp.com",
@@ -40,7 +68,6 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
 
-    // ✅ Sign-in Function
     async function signIn() {
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
