@@ -10,27 +10,27 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
 
   <style>
-    body, html {
+    html { height: 100%; }
+    body {
       margin: 0;
       padding: 0;
-      height: 100%;
+      height: 100vh;
       display: flex;
       font-family: Arial, sans-serif;
     }
-
     #sidebar {
       width: 300px;
       background: #f4f4f4;
       padding: 15px;
       overflow-y: auto;
       border-right: 1px solid #ccc;
+      box-sizing: border-box;
     }
-
     #map {
       flex: 1;
-      height: 100%;
+      height: 100vh;
+      min-width: 0; /* Prevents layout bug in some browsers */
     }
-
     .project-item {
       padding: 8px;
       margin-bottom: 8px;
@@ -38,15 +38,8 @@
       border: 1px solid #ddd;
       border-radius: 4px;
     }
-
-    .project-item button {
-      margin-right: 6px;
-    }
-
-    h2 {
-      margin-top: 0;
-    }
-
+    .project-item button { margin-right: 6px; }
+    h2 { margin-top: 0; }
     .status {
       font-size: 0.85em;
       color: #666;
@@ -56,7 +49,6 @@
 <body>
   <div id="sidebar">
     <h2>🗂 Projects</h2>
-
     <div>
       <input type="text" id="newProjectName" placeholder="New Project Name" style="width: 100%; margin-bottom: 10px;" />
       <button onclick="createProject()">➕ Create</button>
@@ -64,21 +56,17 @@
         🔁 Toggle Archived
       </button>
     </div>
-
     <div id="projectList"><p>Loading...</p></div>
   </div>
-
   <div id="map"></div>
 
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-
   <!-- Leaflet + Draw -->
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-
   <!-- App Logic -->
   <script src="app.js"></script>
 </body>
