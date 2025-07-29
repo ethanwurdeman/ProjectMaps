@@ -2,36 +2,39 @@
 <html>
 <head>
   <title>Dashboard – ProjectMap</title>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      background: #f9f9f9;
-    }
-    h1 {
-      margin-bottom: 20px;
-    }
-    .project {
-      padding: 10px;
-      background: #fff;
-      border: 1px solid #ddd;
-      margin-bottom: 10px;
-      border-radius: 5px;
-    }
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f4f4f4; }
+    h2 { margin-bottom: 20px; }
+    #projectList { margin-top: 20px; }
+    input, button, select { padding: 10px; margin: 5px; }
+    .project-item { background: #fff; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }
+    .project-item button { margin-left: 10px; }
   </style>
 </head>
 <body>
-  <h1>📊 Project Dashboard</h1>
+  <h2>📊 Project Dashboard</h2>
+
+  <div>
+    <input type="text" id="newProjectName" placeholder="New Project Name">
+    <button onclick="createProject()">➕ Create Project</button>
+  </div>
+
+  <div>
+    <label for="filterSelect">Filter by Project:</label>
+    <select id="filterSelect" onchange="filterProjects()">
+      <option value="all">All Projects</option>
+    </select>
+  </div>
+
   <div id="projectList">Loading projects...</div>
 
-  <!-- Firebase SDKs -->
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore-compat.js"></script>
 
   <script>
-    // Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
       authDomain: "projectmap-35a69.firebaseapp.com",
@@ -43,28 +46,58 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    db.collection("projects").get().then(snapshot => {
+    async function loadProjects() {
       const list = document.getElementById("projectList");
-      list.innerHTML = "";
-      if (snapshot.empty) {
-        list.innerHTML = "No projects found.";
-      } else {
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          const div = document.createElement("div");
-          div.className = "project";
-          div.innerHTML = `
-            <strong>${data.name}</strong><br/>
-            <button onclick="goToMap('${doc.id}')">Open Project</button>
-          `;
-          list.appendChild(div);
-        });
-      }
-    });
+      const filterSelect = document.getElementById("filterSelect");
+      list.innerHTML = "<h3>📁 Existing Projects</h3>";
+      filterSelect.innerHTML = '<option value="all">All Projects</option>';
 
-    function goToMap(projectId) {
+      const snapshot = await db.collection("projects").get();
+      snapshot.forEach(doc => {
+        const option = document.createElement("option");
+        option.value = doc.id;
+        option.text = doc.data().name;
+        filterSelect.appendChild(option);
+        renderProject(doc);
+      });
+    }
+
+    function renderProject(doc) {
+      const data = doc.data();
+      const div = document.createElement("div");
+      div.className = "project-item";
+      div.dataset.projectId = doc.id;
+      div.innerHTML = `
+        <strong>${data.name}</strong>
+        <button onclick="goToProject('${doc.id}')">Open</button>
+      `;
+      document.getElementById("projectList").appendChild(div);
+    }
+
+    async function createProject() {
+      const name = document.getElementById("newProjectName").value.trim();
+      if (!name) return alert("Enter project name");
+      const ref = await db.collection("projects").add({
+        name: name,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      window.location.href = `map.html?projectId=${ref.id}`;
+    }
+
+    function goToProject(projectId) {
       window.location.href = `map.html?projectId=${projectId}`;
     }
+
+    function filterProjects() {
+      const selected = document.getElementById("filterSelect").value;
+      document.querySelectorAll(".project-item").forEach(item => {
+        item.style.display = selected === "all" || item.dataset.projectId === selected
+          ? "block" : "none";
+      });
+    }
+
+    // Run immediately
+    loadProjects();
   </script>
 </body>
 </html>
