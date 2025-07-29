@@ -7,20 +7,18 @@ const firebaseConfig = {
   messagingSenderId: "676439686152",
   appId: "1:676439686152:web:0fdc2d8aab41aec67fa5bd"
 };
-
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
-const auth = firebase.auth();
 
-// Get projectId from URL
+// Grab Project ID from URL
 const urlParams = new URLSearchParams(window.location.search);
-let projectId = urlParams.get("projectId");
+const projectId = urlParams.get("projectId");
 
-// Initialize map
+// Initialize Map
 const map = L.map("map").setView([41.865, -103.667], 12);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-const drawnItems = new L.FeatureGroup().addTo(map);
 
+// Status Layers
 const statusLayers = {
   "Not Located": new L.FeatureGroup().addTo(map),
   "In Progress": new L.FeatureGroup().addTo(map),
@@ -28,6 +26,8 @@ const statusLayers = {
 };
 L.control.layers(null, statusLayers).addTo(map);
 
+// Draw controls
+const drawnItems = new L.FeatureGroup().addTo(map);
 const drawControl = new L.Control.Draw({
   edit: { featureGroup: drawnItems },
   draw: {
@@ -40,14 +40,34 @@ const drawControl = new L.Control.Draw({
 });
 map.addControl(drawControl);
 
-// Draw event
-map.on(L.Draw.Event.CREATED, function (e) {
+// Load Segments for Current Project
+async function loadSegments() {
+  const snapshot = await db.collection("segments").where("projectId", "==", projectId).get();
+  snapshot.forEach(doc => {
+    const data = doc.data();
+    const layer = L.geoJSON(data.geojson, {
+      style: {
+        color: data.status === "Located" ? "green" :
+               data.status === "In Progress" ? "orange" : "red",
+        weight: 4
+      }
+    }).addTo(statusLayers[data.status]);
+    layer.bindPopup(`
+      <strong>Ticket:</strong> ${data.ticketNumber}<br/>
+      <strong>Location:</strong> ${data.location}<br/>
+      <strong>Status:</strong> ${data.status}
+    `);
+  });
+}
+
+// Draw Created Event
+map.on(L.Draw.Event.CREATED, async function (e) {
   const layer = e.layer;
   const geojson = layer.toGeoJSON();
 
   const popup = document.createElement("div");
   popup.innerHTML = `
-    <strong>Ticket Number</strong><br/>
+    <strong>Ticket #</strong><br/>
     <input id="ticketInput" /><br/>
     <strong>Location</strong><br/>
     <input id="locationInput" /><br/>
@@ -61,6 +81,7 @@ map.on(L.Draw.Event.CREATED, function (e) {
   `;
 
   layer.bindPopup(popup).openPopup();
+
   popup.querySelector("#submitSegment").onclick = async () => {
     const ticket = popup.querySelector("#ticketInput").value;
     const locationVal = popup.querySelector("#locationInput").value;
@@ -83,91 +104,71 @@ map.on(L.Draw.Event.CREATED, function (e) {
   };
 });
 
-// Load segments
-async function loadSegments() {
-  if (!projectId) return;
-  const snapshot = await db.collection("segments").where("projectId", "==", projectId).get();
+// Load Dashboard Sidebar
+async function loadSidebar() {
+  const container = document.getElementById("sidebar-content");
+  const snapshot = await db.collection("projects").get();
+
+  let html = `
+    <h3>Projects</h3>
+    <input type="text" id="newProjectName" placeholder="New Project Name" />
+    <button onclick="createProject()">Create</button>
+    <ul>
+  `;
+
   snapshot.forEach(doc => {
     const data = doc.data();
-    const layer = L.geoJSON(data.geojson, {
-      style: {
-        color: data.status === "Located" ? "green" :
-               data.status === "In Progress" ? "orange" : "red",
-        weight: 4
-      }
-    }).addTo(statusLayers[data.status]);
-    layer.bindPopup(`
-      <strong>Ticket:</strong> ${data.ticketNumber}<br/>
-      <strong>Location:</strong> ${data.location}<br/>
-      <strong>Status:</strong> ${data.status}
-    `);
+    const isActive = data.archived !== true;
+    html += `
+      <li>
+        <button onclick="switchProject('${doc.id}')">📂</button>
+        ${data.name}
+        <button onclick="deleteProject('${doc.id}')">🗑</button>
+        <button onclick="toggleArchive('${doc.id}', ${isActive})">${isActive ? '📥 Archive' : '📤 Restore'}</button>
+      </li>
+    `;
   });
+
+  html += "</ul>";
+  container.innerHTML = html;
 }
 
-// Sidebar logic
-document.getElementById("toggleSidebar").onclick = () => {
-  document.getElementById("sidebar").classList.toggle("collapsed");
-};
-
-document.getElementById("createProjectBtn").onclick = async () => {
-  const name = prompt("New project name:");
-  if (!name) return;
+window.createProject = async function () {
+  const name = document.getElementById("newProjectName").value.trim();
+  if (!name) return alert("Project name required");
 
   try {
     const ref = await db.collection("projects").add({
       name,
       archived: false,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      createdBy: "dev_user"
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    alert("✅ Project created");
-    loadProjects();
-  } catch (err) {
-    alert("❌ Error: " + err.message);
+    window.location.href = `map.html?projectId=${ref.id}`;
+  } catch (e) {
+    alert("Error creating project: " + e.message);
   }
 };
 
-async function loadProjects() {
-  const list = document.getElementById("projectList");
-  list.innerHTML = "";
+window.deleteProject = async function (projectId) {
+  if (confirm("Are you sure you want to delete this project?")) {
+    await db.collection("projects").doc(projectId).delete();
+    loadSidebar();
+  }
+};
 
-  const showArchived = document.getElementById("showArchived").checked;
-  const query = db.collection("projects").where("archived", "==", showArchived);
-  const snapshot = await query.get();
+window.toggleArchive = async function (projectId, currentStatus) {
+  await db.collection("projects").doc(projectId).update({ archived: !currentStatus });
+  loadSidebar();
+};
 
-  snapshot.forEach(doc => {
-    const div = document.createElement("div");
-    div.className = "projectRow";
-    div.innerHTML = `
-      <button onclick="openProject('${doc.id}')">Open</button>
-      <span>${doc.data().name}</span>
-      <button onclick="deleteProject('${doc.id}')">🗑️</button>
-      <button onclick="archiveProject('${doc.id}', ${!showArchived})">${showArchived ? "Unarchive" : "Archive"}</button>
-    `;
-    list.appendChild(div);
-  });
-}
+window.switchProject = function (projectId) {
+  window.location.href = `map.html?projectId=${projectId}`;
+};
 
-function openProject(id) {
-  window.location.href = `map.html?projectId=${id}`;
-}
-
-async function deleteProject(id) {
-  if (!confirm("Are you sure you want to delete this project?")) return;
-  await db.collection("projects").doc(id).delete();
-  loadProjects();
-}
-
-async function archiveProject(id, archive) {
-  await db.collection("projects").doc(id).update({ archived: archive });
-  loadProjects();
-}
-
-document.getElementById("showArchived").onchange = loadProjects;
-
-// Auth bypass for now
-auth.onAuthStateChanged(user => {
-  // Proceed regardless of auth for now
-  loadProjects();
-  if (projectId) loadSegments();
-});
+// Initialize everything
+window.onload = () => {
+  loadSidebar();
+  if (projectId) {
+    loadSegments();
+  }
+};
