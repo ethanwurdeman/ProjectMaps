@@ -67,3 +67,52 @@
           option.value = doc.id;
           option.text = doc.data().name;
           filterSelect.appendChild(option);
+          renderProject(doc);
+        });
+      });
+    }
+
+    function renderProject(doc) {
+      const data = doc.data();
+      const div = document.createElement("div");
+      div.className = "project-item";
+      div.dataset.projectId = doc.id;
+      div.innerHTML = `
+        <strong>${data.name}</strong>
+        <button onclick="goToProject('${doc.id}')">Open</button>
+      `;
+      document.getElementById("projectList").appendChild(div);
+    }
+
+    function createProject() {
+      const name = document.getElementById("newProjectName").value.trim();
+      if (!name) return alert("Enter project name");
+
+      db.collection("projects").add({
+        name: name,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(ref => {
+        window.location.href = `map.html?projectId=${ref.id}`;
+      }).catch(err => {
+        alert("❌ Failed to create project: " + err.message);
+      });
+    }
+
+    function goToProject(projectId) {
+      window.location.href = `map.html?projectId=${projectId}`;
+    }
+
+    function filterProjects() {
+      const selected = document.getElementById("filterSelect").value;
+      document.querySelectorAll(".project-item").forEach(item => {
+        item.style.display = selected === "all" || item.dataset.projectId === selected
+          ? "block"
+          : "none";
+      });
+    }
+
+    // ✅ Wait for DOM before loading
+    document.addEventListener("DOMContentLoaded", loadProjects);
+  </script>
+</body>
+</html>
