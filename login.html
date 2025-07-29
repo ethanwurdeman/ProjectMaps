@@ -56,30 +56,32 @@
   <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-auth-compat.js"></script>
 
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
-      authDomain: "projectmap-35a69.firebaseapp.com",
-      projectId: "projectmap-35a69",
-      storageBucket: "projectmap-35a69.appspot.com",
-      messagingSenderId: "676439686152",
-      appId: "1:676439686152:web:0fdc2d8aab41aec67fa5bd"
+    window.onload = () => {
+      const firebaseConfig = {
+        apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
+        authDomain: "projectmap-35a69.firebaseapp.com",
+        projectId: "projectmap-35a69",
+        storageBucket: "projectmap-35a69.appspot.com",
+        messagingSenderId: "676439686152",
+        appId: "1:676439686152:web:0fdc2d8aab41aec67fa5bd"
+      };
+
+      firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+
+      document.getElementById("signInBtn").addEventListener("click", async () => {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+        const errorDiv = document.getElementById("error");
+
+        try {
+          await auth.signInWithEmailAndPassword(email, password);
+          window.location.href = "dashboard.html";
+        } catch (err) {
+          errorDiv.textContent = err.message;
+        }
+      });
     };
-
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-
-    document.getElementById("signInBtn").addEventListener("click", async () => {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-      const errorDiv = document.getElementById("error");
-
-      try {
-        await auth.signInWithEmailAndPassword(email, password);
-        window.location.href = "dashboard.html";
-      } catch (err) {
-        errorDiv.textContent = err.message;
-      }
-    });
   </script>
 </body>
 </html>
