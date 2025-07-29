@@ -116,7 +116,7 @@ const drawControl = new L.Control.Draw({
 });
 map.addControl(drawControl);
 
-// --- FIXED: Draw Event with reliable popup submission ---
+// --- Draw Event with stringified GeoJSON ---
 map.on(L.Draw.Event.CREATED, function (e) {
   const layer = e.layer;
   let geojson = layer.toGeoJSON();
@@ -163,7 +163,7 @@ map.on(L.Draw.Event.CREATED, function (e) {
             ticketNumber: ticket,
             location: locationVal,
             status,
-            geojson,
+            geojson: JSON.stringify(geojson),
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
           });
           alert("✅ Segment saved!");
@@ -184,7 +184,13 @@ async function loadSegments() {
   const snap = await db.collection("segments").where("projectId", "==", currentProjectId).get();
   snap.forEach(doc => {
     const data = doc.data();
-    let geojson = data.geojson;
+    let geojson = {};
+    try {
+      geojson = JSON.parse(data.geojson);
+    } catch (err) {
+      console.error("Invalid GeoJSON", err, data.geojson);
+      return; // skip this one
+    }
     if (!geojson.properties) geojson.properties = {}; // Clean GeoJSON
     const layer = L.geoJSON(geojson, {
       style: {
