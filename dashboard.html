@@ -98,4 +98,24 @@
         const ref = await db.collection("projects").add({
           name,
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-          createdBy: DEV_MODE ? "dev_
+          createdBy: DEV_MODE ? "dev_user" : "unknown_user"
+        });
+        window.location.href = `map.html?projectId=${ref.id}`;
+      } catch (error) {
+        alert("❌ Failed to create project: " + error.message);
+      }
+    }
+
+    function goToProject(projectId) {
+      window.location.href = `map.html?projectId=${projectId}`;
+    }
+
+    function filterProjects() {
+      const selected = document.getElementById("filterSelect").value;
+      document.querySelectorAll(".project-item").forEach(item => {
+        item.style.display = selected === "all" || item.dataset.projectId === selected ? "block" : "none";
+      });
+    }
+  </script>
+</body>
+</html>
