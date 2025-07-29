@@ -24,12 +24,12 @@
 
   <div>
     <input type="text" id="newProjectName" placeholder="New Project Name">
-    <button onclick="createProject()">➕ Create Project</button>
+    <button id="createProjectBtn">➕ Create Project</button>
   </div>
 
   <div>
     <label for="filterSelect">Filter by Project:</label>
-    <select id="filterSelect" onchange="filterProjects()">
+    <select id="filterSelect">
       <option value="all">All Projects</option>
     </select>
   </div>
@@ -41,27 +41,66 @@
   <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore-compat.js"></script>
 
   <script>
-    // ✅ Initialize Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
-      authDomain: "projectmap-35a69.firebaseapp.com",
-      projectId: "projectmap-35a69",
-      storageBucket: "projectmap-35a69.appspot.com",
-      messagingSenderId: "676439686152",
-      appId: "1:676439686152:web:0fdc2d8aab41aec67fa5bd"
-    };
+    document.addEventListener("DOMContentLoaded", () => {
+      // ✅ Initialize Firebase
+      const firebaseConfig = {
+        apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
+        authDomain: "projectmap-35a69.firebaseapp.com",
+        projectId: "projectmap-35a69",
+        storageBucket: "projectmap-35a69.appspot.com",
+        messagingSenderId: "676439686152",
+        appId: "1:676439686152:web:0fdc2d8aab41aec67fa5bd"
+      };
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
 
-    // ✅ Load Projects
-    function loadProjects() {
-      const list = document.getElementById("projectList");
+      const projectList = document.getElementById("projectList");
       const filterSelect = document.getElementById("filterSelect");
-      list.innerHTML = "<h3>📁 Existing Projects</h3>";
-      filterSelect.innerHTML = '<option value="all">All Projects</option>';
+      const createBtn = document.getElementById("createProjectBtn");
 
-      db.collection("projects").get().then(snapshot => {
+      createBtn.addEventListener("click", async () => {
+        const name = document.getElementById("newProjectName").value.trim();
+        if (!name) return alert("Enter project name");
+
+        try {
+          const ref = await db.collection("projects").add({
+            name: name,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          window.location.href = `map.html?projectId=${ref.id}`;
+        } catch (err) {
+          alert("❌ Failed to create project: " + err.message);
+        }
+      });
+
+      function renderProject(doc) {
+        const data = doc.data();
+        const div = document.createElement("div");
+        div.className = "project-item";
+        div.dataset.projectId = doc.id;
+        div.innerHTML = `
+          <strong>${data.name}</strong>
+          <button onclick="window.location.href='map.html?projectId=${doc.id}'">Open</button>
+        `;
+        projectList.appendChild(div);
+      }
+
+      function filterProjects() {
+        const selected = filterSelect.value;
+        document.querySelectorAll(".project-item").forEach(item => {
+          item.style.display = selected === "all" || item.dataset.projectId === selected
+            ? "block"
+            : "none";
+        });
+      }
+
+      filterSelect.addEventListener("change", filterProjects);
+
+      async function loadProjects() {
+        projectList.innerHTML = "<h3>📁 Existing Projects</h3>";
+        filterSelect.innerHTML = '<option value="all">All Projects</option>';
+        const snapshot = await db.collection("projects").get();
         snapshot.forEach(doc => {
           const option = document.createElement("option");
           option.value = doc.id;
@@ -69,50 +108,10 @@
           filterSelect.appendChild(option);
           renderProject(doc);
         });
-      });
-    }
+      }
 
-    function renderProject(doc) {
-      const data = doc.data();
-      const div = document.createElement("div");
-      div.className = "project-item";
-      div.dataset.projectId = doc.id;
-      div.innerHTML = `
-        <strong>${data.name}</strong>
-        <button onclick="goToProject('${doc.id}')">Open</button>
-      `;
-      document.getElementById("projectList").appendChild(div);
-    }
-
-    function createProject() {
-      const name = document.getElementById("newProjectName").value.trim();
-      if (!name) return alert("Enter project name");
-
-      db.collection("projects").add({
-        name: name,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      }).then(ref => {
-        window.location.href = `map.html?projectId=${ref.id}`;
-      }).catch(err => {
-        alert("❌ Failed to create project: " + err.message);
-      });
-    }
-
-    function goToProject(projectId) {
-      window.location.href = `map.html?projectId=${projectId}`;
-    }
-
-    function filterProjects() {
-      const selected = document.getElementById("filterSelect").value;
-      document.querySelectorAll(".project-item").forEach(item => {
-        item.style.display = selected === "all" || item.dataset.projectId === selected
-          ? "block"
-          : "none";
-      });
-    }
-
-    // ✅ Wait for DOM before loading
-    document.addEventListener("DOMContentLoaded", loadProjects);
+      loadProjects();
+    });
   </script>
 </body>
 </html>
