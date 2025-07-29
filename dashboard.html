@@ -2,36 +2,70 @@
 <html>
 <head>
   <title>Dashboard – ProjectMap</title>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; background: #f8f8f8; }
-    h1 { color: #333; }
-    .menu { margin-top: 30px; }
-    .menu button {
-      display: block;
-      padding: 12px;
-      margin: 10px 0;
-      width: 100%;
-      max-width: 300px;
-      font-size: 16px;
-      background: #1a73e8;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f9f9f9;
     }
-    .menu button:hover {
-      background: #155acb;
+    h1 {
+      margin-bottom: 20px;
     }
-    #userStatus {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      font-size: 14px;
+    .project {
+      padding: 10px;
+      background: #fff;
+      border: 1px solid #ddd;
+      margin-bottom: 10px;
+      border-radius: 5px;
     }
   </style>
+</head>
+<body>
+  <h1>📊 Project Dashboard</h1>
+  <div id="projectList">Loading projects...</div>
 
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
-  <script src="https
+  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    // Initialize Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
+      authDomain: "projectmap-35a69.firebaseapp.com",
+      projectId: "projectmap-35a69",
+      storageBucket: "projectmap-35a69.appspot.com",
+      messagingSenderId: "676439686152",
+      appId: "1:676439686152:web:0fdc2d8aab41aec67fa5bd"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Load projects
+    db.collection("projects").get().then(snapshot => {
+      const list = document.getElementById("projectList");
+      list.innerHTML = "";
+      if (snapshot.empty) {
+        list.innerHTML = "No projects found.";
+      } else {
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const div = document.createElement("div");
+          div.className = "project";
+          div.innerHTML = `
+            <strong>${data.name}</strong><br/>
+            <button onclick="goToMap('${doc.id}')">Open Project</button>
+          `;
+          list.appendChild(div);
+        });
+      }
+    });
+
+    function goToMap(projectId) {
+      window.location.href = `map.html?projectId=${projectId}`;
+    }
+  </script>
+</body>
+</html>
