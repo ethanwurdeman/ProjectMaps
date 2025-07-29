@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Dashboard – ProjectMap</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f8f8f8; }
+    h2 { margin-bottom: 20px; }
+    input, button, select { padding: 10px; margin: 5px; }
+    .project-item {
+      background: #fff;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .project-item button { margin-left: 10px; }
+    #userStatus {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 14px;
+    }
+  </style>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore-compat.js"></script>
+
+  <!-- Auth Guard -->
+  <script src="auth-guard.js" defer></script>
+</head>
+<body>
+  <div id="userStatus">Checking login...</div>
+
+  <h2>🛠 Admin Project Dashboard</h2>
+
+  <div>
+    <input type="text" id="newProjectName" placeholder="New Project Name">
+    <button onclick="createProject()">➕ Create Project</button>
+  </div>
+
+  <div>
+    <label for="filterSelect">Filter by Project:</label>
+    <select id="filterSelect" onchange="filterProjects()">
+      <option value="all">All Projects</option>
+    </select>
+  </div>
+
+  <div id="projectList"></div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
+      authDomain: "projectmap-35a69.firebaseapp.com",
+      projectId: "projectmap-35a69",
+      storageBucket: "projectmap-35a69.appspot.com",
+      messagingSenderId: "676439686152",
+      appId: "1:676439686152:web:0fdc2d8aab41aec67fa5bd"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    auth.onAuthStateChanged(async user => {
+      if (!user) return;
+
+      const userDoc = await db.collection('users').doc(user.uid).get();
+      if (!userDoc.exists || userDoc.data().role !== 'admin') {
+        alert('Access denied. Admins only.');
+        location.href = 'dashboard.html';
+        return;
+      }
+
+      document.getElementById("userStatus").innerHTML = `
+        Logged in as <strong>${user.email}</strong>
+        <button onclick="firebase.auth().signOut().then(() => location.href = 'login.html')">Sign Out</button>
+      `;
+      loadProjects();
+    });
+
+    async function loadProjects() {
+      const list = document.getElementById("projectList");
+      const filterSelect = document.getElementById("filterSelect");
+      list.innerHTML = "<h3>📁 Existing Projects</h3>";
+      filterSelect.innerHTML = '<option value="all">All Projects</option>';
+      const snapshot = await db.collection("projects").get();
+      snapshot.forEach(doc => {
+        const option = document.createElement("option");
+        option.value = doc.id;
+        option.text = doc.data().name;
+        filterSelect.appendChild(option);
+        renderProject(doc);
+      });
+    }
+
+    function renderProject(doc) {
+      const data = doc.data();
+      const div = document.createElement("div");
+      div.className = "project-item";
+      div.dataset.projectId = doc.id;
+      div.innerHTML = `
+        <strong>${data.name}</strong>
+        <button onclick="goToProject('${doc.id}')">Open</button>
+      `;
+      document.getElementById("projectList").appendChild(div);
+    }
+
+    async function createProject() {
+      const name = document.getElementById("newProjectName").value.trim();
+      if (!name) return alert("Enter project name");
+      const ref = await db.collection("projects").add({
+        name: name,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        createdBy: firebase.auth().currentUser.uid
+      });
+      location.href = `map.html?projectId=${ref.id}`;
+    }
+
+    function goToProject(projectId) {
+      location.href = `map.html?projectId=${projectId}`;
+    }
+
+    function filterProjects() {
+      const selected = document.getElementById("filterSelect").value;
+      document.querySelectorAll(".project-item").forEach(item => {
+        item.style.display = selected === "all" || item.dataset.projectId === selected ? "block" : "none";
+      });
+    }
+  </script>
+</body>
+</html>
