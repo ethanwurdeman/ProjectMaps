@@ -76,25 +76,60 @@
       font-weight: bold;
       vertical-align: middle;
     }
-    #sidebarToggle {
+    /* Sidebar slider (modern pill style) */
+    #sidebarSlider {
       position: absolute;
-      z-index: 9999;
-      left: 10px;
-      top: 14px;
-      background: #fff;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 10000;
+      width: 32px;
+      height: 60px;
+      background: #eee;
+      border-top-right-radius: 30px;
+      border-bottom-right-radius: 30px;
       border: 1px solid #ccc;
-      border-radius: 4px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-      padding: 6px 10px;
+      box-shadow: 1px 0 6px rgba(0,0,0,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
       cursor: pointer;
-      font-size: 1.2em;
-      transition: left 0.2s;
+      transition: left 0.2s, background 0.2s;
+    }
+    #sidebarSlider.collapsed {
+      left: 0;
+      background: #ddd;
+    }
+    #sliderHandle {
+      width: 18px;
+      height: 36px;
+      background: #bbb;
+      border-radius: 10px;
+      box-shadow: 0 0 2px #999;
+      position: relative;
+    }
+    #sidebarSlider:after {
+      content: '⟨';
+      font-size: 1.6em;
+      color: #888;
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      transition: content 0.2s;
+    }
+    #sidebarSlider.collapsed:after {
+      content: '⟩';
+      right: 7px;
     }
   </style>
 </head>
 <body>
-  <!-- Sidebar Toggle Button -->
-  <button id="sidebarToggle" title="Toggle sidebar">≡</button>
+  <!-- Sidebar Slider Toggle -->
+  <div id="sidebarSlider" title="Toggle sidebar">
+    <div id="sliderHandle"></div>
+  </div>
 
   <div id="sidebar">
     <!-- Back button and project name bar, hidden until a project is open -->
@@ -129,29 +164,34 @@
   <!-- App Logic -->
   <script src="app.js"></script>
   <script>
-    // Sidebar collapse/expand logic
+    // Sidebar slider (centered, modern style)
     document.addEventListener("DOMContentLoaded", function() {
       const sidebar = document.getElementById('sidebar');
       const mapDiv = document.getElementById('map');
-      const toggleBtn = document.getElementById('sidebarToggle');
+      const slider = document.getElementById('sidebarSlider');
       let collapsed = false;
-      toggleBtn.onclick = function() {
-        collapsed = !collapsed;
+
+      function updateSidebarSlider() {
         if (collapsed) {
           sidebar.style.display = 'none';
           mapDiv.style.marginLeft = '0';
-          toggleBtn.innerHTML = '→';
-          toggleBtn.title = "Show sidebar";
+          slider.classList.add('collapsed');
         } else {
           sidebar.style.display = '';
           mapDiv.style.marginLeft = '';
-          toggleBtn.innerHTML = '≡';
-          toggleBtn.title = "Hide sidebar";
+          slider.classList.remove('collapsed');
         }
         setTimeout(() => { 
           if (window.map && window.map.invalidateSize) window.map.invalidateSize();
         }, 300);
+      }
+
+      slider.onclick = function() {
+        collapsed = !collapsed;
+        updateSidebarSlider();
       };
+
+      updateSidebarSlider();
     });
   </script>
 </body>
