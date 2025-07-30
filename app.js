@@ -58,7 +58,20 @@ window.deleteProject = async function(projectId) {
   loadProjectList();
 };
 
-window.toggleArchive = async function(projectId, isActive) {
+window.toggleArchive = function() {
+  showArchived = !showArchived;
+  loadProjectList();
+  updateArchiveBtnLabel();
+};
+
+function updateArchiveBtnLabel() {
+  const btn = document.getElementById('archiveToggleBtn');
+  if (btn) {
+    btn.textContent = showArchived ? "View Active Projects" : "View Archived Projects";
+  }
+}
+
+window.toggleArchiveProject = async function(projectId, isActive) {
   await db.collection("projects").doc(projectId).update({ archived: !isActive });
   logHistory(projectId, isActive ? "Project archived." : "Project restored.");
   loadProjectList();
@@ -95,19 +108,6 @@ window.returnToProjectList = function() {
   loadProjectList();
 };
 
-window.toggleArchived = function() {
-  showArchived = !showArchived;
-  loadProjectList();
-  updateArchiveBtnLabel();
-};
-
-function updateArchiveBtnLabel() {
-  const btn = document.getElementById('archiveToggleBtn');
-  if (btn) {
-    btn.textContent = showArchived ? "View Active Projects" : "View Archived Projects";
-  }
-}
-
 async function loadProjectList() {
   const listDiv = document.getElementById("projectList");
   listDiv.innerHTML = "<p>Loading...</p>";
@@ -127,7 +127,7 @@ async function loadProjectList() {
         <button onclick="switchProject('${doc.id}')">Open</button>
         <span style="flex:1">${data.name}</span>
         <button onclick="deleteProject('${doc.id}')">🗑️</button>
-        <button onclick="toggleArchive('${doc.id}', ${!data.archived})">
+        <button onclick="toggleArchiveProject('${doc.id}', ${!data.archived})">
           ${!data.archived ? '📥 Archive' : '📤 Restore'}
         </button>
       </div>
@@ -456,4 +456,9 @@ window.onload = async function() {
   const urlProjectId = urlParams.get("projectId");
   document.getElementById('messagesBtn').disabled = true;
   document.getElementById('historyBtn').disabled = true;
-  if (urlProjectId)
+  if (urlProjectId) {
+    switchProject(urlProjectId);
+    document.getElementById('projectMenu').style.display = 'none';
+    document.getElementById('backBar').style.display = '';
+  } else {
+    document.getElementById('
