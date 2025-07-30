@@ -150,7 +150,6 @@ const statusLayers = {
   "In Progress": new L.FeatureGroup().addTo(window.map),
   "Located": new L.FeatureGroup().addTo(window.map)
 };
-L.control.layers(null, statusLayers).addTo(window.map);
 
 const drawControl = new L.Control.Draw({
   position: 'topleft',
