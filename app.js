@@ -153,16 +153,21 @@ const statusLayers = {
 L.control.layers(null, statusLayers).addTo(window.map);
 
 const drawControl = new L.Control.Draw({
-  edit: { featureGroup: drawnItems },
+  position: 'topleft',
+  edit: false, // disables edit/delete toolbar
   draw: {
     polygon: true,
     polyline: true,
     rectangle: false,
     circle: false,
-    marker: false
+    marker: false,
+    circlemarker: false
   }
 });
 window.map.addControl(drawControl);
+
+// Move Layers Control to top left with draw tools
+window.layersControl = L.control.layers(null, statusLayers, { position: 'topleft' }).addTo(window.map);
 
 // ==== Segment Form: BUILT FROM GLOBAL CONFIG ====
 window.map.on(L.Draw.Event.CREATED, async function (e) {
