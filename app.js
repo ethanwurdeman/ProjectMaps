@@ -14,22 +14,6 @@ const db = firebase.firestore();
 let currentProjectId = null;
 let showArchived = false;
 let showArchivedSegments = false;
-let globalConfigFields = []; // Loaded once on startup
-
-// ==== Config Loader (GLOBAL) ====
-async function loadGlobalConfig() {
-  const doc = await db.collection("global").doc("config").get();
-  if (doc.exists && doc.data().segmentForm && Array.isArray(doc.data().segmentForm.fields)) {
-    globalConfigFields = doc.data().segmentForm.fields;
-  } else {
-    // Fallback: minimal required fields
-    globalConfigFields = [
-      { key:"ticketNumber", type:"text", label:"Ticket #", required:true, show:true },
-      { key:"location", type:"text", label:"Location", required:true, show:true },
-      { key:"status", type:"select", label:"Status", options:["Not Located","In Progress","Located"], required:true, show:true }
-    ];
-  }
-}
 
 // ==== Sidebar Dashboard Logic ====
 
@@ -57,7 +41,20 @@ window.deleteProject = async function(projectId) {
   loadProjectList();
 };
 
-window.toggleArchive = async function(projectId, isActive) {
+window.toggleArchive = function() {
+  showArchived = !showArchived;
+  loadProjectList();
+  updateArchiveBtnLabel();
+};
+
+function updateArchiveBtnLabel() {
+  const btn = document.getElementById('archiveToggleBtn');
+  if (btn) {
+    btn.textContent = showArchived ? "View Active Projects" : "View Archived Projects";
+  }
+}
+
+window.toggleArchiveProject = async function(projectId, isActive) {
   await db.collection("projects").doc(projectId).update({ archived: !isActive });
   loadProjectList();
 };
@@ -65,7 +62,7 @@ window.toggleArchive = async function(projectId, isActive) {
 window.switchProject = function(projectId) {
   currentProjectId = projectId;
   document.getElementById('projectMenu').style.display = 'none';
-  document.getElementById('backBar').style.display = '';
+  document.getElementById('projectHeader').style.display = 'flex';
   db.collection("projects").doc(projectId).get().then(doc => {
     if (doc.exists) {
       document.getElementById("currentProjectName").textContent = doc.data().name;
@@ -80,15 +77,10 @@ window.switchProject = function(projectId) {
 window.returnToProjectList = function() {
   currentProjectId = null;
   document.getElementById('projectMenu').style.display = '';
-  document.getElementById('backBar').style.display = 'none';
+  document.getElementById('projectHeader').style.display = 'none';
   document.getElementById('currentProjectName').textContent = "";
   document.getElementById('segmentList').innerHTML = '';
   Object.values(statusLayers).forEach(layer => layer.clearLayers());
-  loadProjectList();
-};
-
-window.toggleArchived = function() {
-  showArchived = !showArchived;
   loadProjectList();
 };
 
@@ -111,13 +103,14 @@ async function loadProjectList() {
         <button onclick="switchProject('${doc.id}')">Open</button>
         <span style="flex:1">${data.name}</span>
         <button onclick="deleteProject('${doc.id}')">🗑️</button>
-        <button onclick="toggleArchive('${doc.id}', ${!data.archived})">
+        <button onclick="toggleArchiveProject('${doc.id}', ${!data.archived})">
           ${!data.archived ? '📥 Archive' : '📤 Restore'}
         </button>
       </div>
     `;
   });
   listDiv.innerHTML = html || "<p>No projects found.</p>";
+  updateArchiveBtnLabel();
 }
 
 // ==== Map + Segments Logic ====
@@ -147,57 +140,48 @@ const drawControl = new L.Control.Draw({
 });
 window.map.addControl(drawControl);
 
-// ==== Segment Form: BUILT FROM GLOBAL CONFIG ====
-window.map.on(L.Draw.Event.CREATED, async function (e) {
+window.map.on(L.Draw.Event.CREATED, function (e) {
   const layer = e.layer;
   let geojson = layer.toGeoJSON();
   if (!geojson.properties) geojson.properties = {};
 
   drawnItems.addLayer(layer);
 
-  // Build popup form from config
-  await loadGlobalConfig(); // Always get latest config
-
-  const uniqueId = `submitSegment_${Date.now()}_${Math.floor(Math.random()*10000)}`;
-  let popupHtml = `<form id="segmentForm">`;
-  for (const field of globalConfigFields) {
-    if (!field.show) continue;
-    const required = field.required ? "required" : "";
-    popupHtml += `<div style="margin-bottom:6px">`;
-    popupHtml += `<strong>${field.label}</strong><br/>`;
-    if (field.type === "select") {
-      popupHtml += `<select id="${field.key}Input" style="width:100%" ${required}>`;
-      (field.options || []).forEach(opt => {
-        popupHtml += `<option value="${opt}">${opt}</option>`;
-      });
-      popupHtml += `</select>`;
-    } else if (field.type === "date") {
-      popupHtml += `<input type="date" id="${field.key}Input" style="width:95%" ${required} />`;
-    } else {
-      popupHtml += `<input type="text" id="${field.key}Input" style="width:95%" ${required} />`;
-    }
-    popupHtml += `</div>`;
-  }
-  popupHtml += `<button type="submit" id="${uniqueId}" style="margin-top:6px;width:100%">Submit</button>`;
-  popupHtml += `</form>`;
-
-  layer.bindPopup(popupHtml).openPopup();
+  // Simple popup form for segment
+  const popupDiv = document.createElement("div");
+  popupDiv.innerHTML = `
+    <strong>Ticket #</strong><br/>
+    <input id="ticketInput" /><br/>
+    <strong>Location</strong><br/>
+    <input id="locationInput" /><br/>
+    <strong>Status</strong><br/>
+    <select id="statusInput">
+      <option value="Not Located">Not Located</option>
+      <option value="In Progress">In Progress</option>
+      <option value="Located">Located</option>
+    </select><br/>
+    <button id="submitSegment">Submit</button>
+  `;
+  layer.bindPopup(popupDiv).openPopup();
 
   setTimeout(() => {
-    const form = document.getElementById("segmentForm");
-    if (form) {
-      form.onsubmit = async function(ev) {
-        ev.preventDefault();
-        // Collect all field values
-        const segData = { projectId: currentProjectId, archived: false, geojson: JSON.stringify(geojson), timestamp: firebase.firestore.FieldValue.serverTimestamp() };
-        for (const field of globalConfigFields) {
-          if (!field.show) continue;
-          const val = document.getElementById(field.key+"Input").value;
-          if (field.required && !val) return alert(`Field "${field.label}" is required.`);
-          segData[field.key] = val;
-        }
+    const btn = popupDiv.querySelector("#submitSegment");
+    if (btn) {
+      btn.onclick = async () => {
+        const ticket = popupDiv.querySelector("#ticketInput").value;
+        const locationVal = popupDiv.querySelector("#locationInput").value;
+        const status = popupDiv.querySelector("#statusInput").value;
+
         try {
-          await db.collection("segments").add(segData);
+          await db.collection("segments").add({
+            projectId: currentProjectId,
+            ticketNumber: ticket,
+            location: locationVal,
+            status,
+            geojson: JSON.stringify(geojson), // Save as string to avoid nested array bug
+            archived: false,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          });
           loadSegments();
           loadSegmentListSidebar();
           window.map.closePopup();
@@ -206,10 +190,9 @@ window.map.on(L.Draw.Event.CREATED, async function (e) {
         }
       };
     }
-  }, 200);
+  }, 150);
 });
 
-// ==== Load Segments on Map ====
 function loadSegments() {
   Object.values(statusLayers).forEach(layer => layer.clearLayers());
   if (!currentProjectId) return;
@@ -231,16 +214,14 @@ function loadSegments() {
             weight: 4
           }
         }).addTo(statusLayers[data.status || "Not Located"]);
-        // Build popup using config fields
-        let popupHtml = "";
-        for (const field of globalConfigFields) {
-          if (data[field.key] !== undefined && field.show)
-            popupHtml += `<strong>${field.label}:</strong> ${data[field.key]}<br/>`;
-        }
-        layer.bindPopup(popupHtml);
+        layer.bindPopup(`
+          <strong>Ticket:</strong> ${data.ticketNumber}<br/>
+          <strong>Location:</strong> ${data.location}<br/>
+          <strong>Status:</strong> ${data.status}
+        `);
         layersForBounds.push(layer);
       });
-      // Fit map to bounds of segments
+      // Fit to segments
       if (layersForBounds.length > 0) {
         let bounds = null;
         layersForBounds.forEach(l => {
@@ -256,21 +237,12 @@ function loadSegments() {
     });
 }
 
-// ==== Segment List in Sidebar ====
-
-window.toggleArchivedSegments = function() {
-  showArchivedSegments = !showArchivedSegments;
-  loadSegmentListSidebar();
-};
-
 async function loadSegmentListSidebar() {
   const segmentListDiv = document.getElementById("segmentList");
   if (!currentProjectId) {
     segmentListDiv.innerHTML = "";
     return;
   }
-  await loadGlobalConfig();
-
   let query = db.collection("segments")
     .where("projectId", "==", currentProjectId)
     .where("archived", "==", !!showArchivedSegments);
@@ -294,24 +266,27 @@ async function loadSegmentListSidebar() {
   snap.forEach(doc => {
     const data = doc.data();
     html += `<div class="segment-item">`;
-    for (const field of globalConfigFields) {
-      if (!field.show) continue;
-      // Status field becomes a dropdown for editing
-      if (field.key === "status") {
-        html += `<div><strong>${field.label}:</strong>
-          <select onchange="window.updateSegmentStatus('${doc.id}', this.value)">
-            ${(field.options||[]).map(opt => `<option value="${opt}" ${data.status === opt ? "selected" : ""}>${opt}</option>`).join("")}
-          </select></div>`;
-      } else {
-        html += `<div><strong>${field.label}:</strong> ${data[field.key] || ""}</div>`;
-      }
-    }
+    html += `<div><strong>Ticket #:</strong> ${data.ticketNumber || ""}</div>`;
+    html += `<div><strong>Location:</strong> ${data.location || ""}</div>`;
+    html += `<div><strong>Status:</strong>
+      <select onchange="window.updateSegmentStatus('${doc.id}', this.value)">
+        <option value="Not Located" ${data.status === "Not Located" ? "selected" : ""}>Not Located</option>
+        <option value="In Progress" ${data.status === "In Progress" ? "selected" : ""}>In Progress</option>
+        <option value="Located" ${data.status === "Located" ? "selected" : ""}>Located</option>
+      </select>
+    </div>`;
     html += `<button onclick="window.toggleSegmentArchive('${doc.id}', ${!data.archived})">
       ${data.archived ? 'Restore' : 'Archive'}
-    </button></div>`;
+    </button>`;
+    html += `</div>`;
   });
   segmentListDiv.innerHTML = html;
 }
+
+window.toggleArchivedSegments = function() {
+  showArchivedSegments = !showArchivedSegments;
+  loadSegmentListSidebar();
+};
 
 window.updateSegmentStatus = async function(segmentId, newStatus) {
   await db.collection("segments").doc(segmentId).update({ status: newStatus });
@@ -326,48 +301,16 @@ window.toggleSegmentArchive = async function(segmentId, archiveVal) {
 };
 
 // ==== Initial Load ====
-window.onload = async function() {
-  await loadGlobalConfig();
+window.onload = function() {
   const urlParams = new URLSearchParams(window.location.search);
   const urlProjectId = urlParams.get("projectId");
   if (urlProjectId) {
     switchProject(urlProjectId);
     document.getElementById('projectMenu').style.display = 'none';
-    document.getElementById('backBar').style.display = '';
+    document.getElementById('projectHeader').style.display = 'flex';
   } else {
     document.getElementById('projectMenu').style.display = '';
-    document.getElementById('backBar').style.display = 'none';
+    document.getElementById('projectHeader').style.display = 'none';
     loadProjectList();
   }
 };
-
-// Sidebar slider (centered, modern style)
-document.addEventListener("DOMContentLoaded", function() {
-  const sidebar = document.getElementById('sidebar');
-  const mapDiv = document.getElementById('map');
-  const slider = document.getElementById('sidebarSlider');
-  let collapsed = false;
-
-  function updateSidebarSlider() {
-    if (collapsed) {
-      sidebar.style.display = 'none';
-      mapDiv.style.marginLeft = '0';
-      slider.classList.add('collapsed');
-    } else {
-      sidebar.style.display = '';
-      mapDiv.style.marginLeft = '';
-      slider.classList.remove('collapsed');
-    }
-    setTimeout(() => { 
-      if (window.map && window.map.invalidateSize) window.map.invalidateSize();
-    }, 300);
-  }
-
-  if (slider) {
-    slider.onclick = function() {
-      collapsed = !collapsed;
-      updateSidebarSlider();
-    };
-    updateSidebarSlider();
-  }
-});
