@@ -30,6 +30,23 @@
       border-right: 1px solid #ccc;
       box-sizing: border-box;
       height: 100vh;
+            position: relative;
+      transition: width 0.3s;
+    }
+    #collapseBtn {
+      position: absolute;
+      top: 10px;
+      left: 100%;
+      margin-left: 5px;
+      padding: 4px 6px;
+      cursor: pointer;
+    }
+    #sidebar.collapsed {
+      width: 0;
+      padding: 0;
+    }
+    #sidebar.collapsed #sidebarContent {
+      display: none;
     }
     #map {
       flex: 1;
