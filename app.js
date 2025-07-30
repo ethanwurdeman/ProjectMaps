@@ -141,7 +141,7 @@ async function loadProjectList() {
 const urlParams = new URLSearchParams(window.location.search);
 currentProjectId = urlParams.get("projectId");
 
-window.map = L.map("map").setView([41.865, -103.667], 5);
+window.map = L.map("map").setView([41.865, -103.667], 12);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(window.map);
 
 const drawnItems = new L.FeatureGroup().addTo(window.map);
@@ -179,18 +179,19 @@ window.map.on(L.Draw.Event.CREATED, async function (e) {
   for (const field of globalConfigFields) {
     if (!field.show) continue;
     const required = field.required ? "required" : "";
+    const fieldId = field.key + "Input";
     popupHtml += `<div style="margin-bottom:6px">`;
     popupHtml += `<strong>${field.label}</strong><br/>`;
     if (field.type === "select") {
-      popupHtml += `<select id="${field.key}Input" style="width:100%" ${required}>`;
+      popupHtml += `<select id="${fieldId}" name="${field.key}" style="width:100%" ${required}>`;
       (field.options || []).forEach(opt => {
         popupHtml += `<option value="${opt}">${opt}</option>`;
       });
       popupHtml += `</select>`;
     } else if (field.type === "date") {
-      popupHtml += `<input type="date" id="${field.key}Input" style="width:95%" ${required} />`;
+      popupHtml += `<input type="date" id="${fieldId}" name="${field.key}" style="width:95%" ${required} />`;
     } else {
-      popupHtml += `<input type="text" id="${field.key}Input" style="width:95%" ${required} />`;
+      popupHtml += `<input type="text" id="${fieldId}" name="${field.key}" style="width:95%" ${required} />`;
     }
     popupHtml += `</div>`;
   }
@@ -266,7 +267,7 @@ function loadSegments() {
           if (data[field.key] !== undefined && field.show) {
             if (field.key === "status") {
               popupHtml += `<div><strong>${field.label}:</strong>
-                <select id="popupStatus_${doc.id}">
+                <select id="popupStatus_${doc.id}" name="${field.key}">
                   ${(field.options||[]).map(opt => `<option value="${opt}" ${data.status === opt ? "selected" : ""}>${opt}</option>`).join("")}
                 </select>
                 <button onclick="window.updateSegmentStatus('${doc.id}', document.getElementById('popupStatus_${doc.id}').value)">Save</button>
@@ -346,7 +347,7 @@ async function loadSegmentListSidebar() {
       if (!field.show) continue;
       if (field.key === "status") {
         html += `<div><strong>${field.label}:</strong>
-          <select onchange="window.updateSegmentStatus('${doc.id}', this.value)">
+          <select id="status_${doc.id}" name="${field.key}" onchange="window.updateSegmentStatus('${doc.id}', this.value)">
             ${(field.options||[]).map(opt => `<option value="${opt}" ${data.status === opt ? "selected" : ""}>${opt}</option>`).join("")}
           </select></div>`;
       } else {
