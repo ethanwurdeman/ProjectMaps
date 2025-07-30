@@ -22,7 +22,6 @@ async function loadGlobalConfig() {
   if (doc.exists && doc.data().segmentForm && Array.isArray(doc.data().segmentForm.fields)) {
     globalConfigFields = doc.data().segmentForm.fields;
   } else {
-    // Fallback: minimal required fields
     globalConfigFields = [
       { key:"ticketNumber", type:"text", label:"Ticket #", required:true, show:true },
       { key:"location", type:"text", label:"Location", required:true, show:true },
@@ -42,6 +41,7 @@ window.createProject = async function() {
       archived: false,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
+    logHistory(ref.id, `Project "${name}" created.`);
     loadProjectList();
     switchProject(ref.id);
   } catch (e) {
@@ -54,18 +54,23 @@ window.deleteProject = async function(projectId) {
   await db.collection("projects").doc(projectId).delete();
   const segments = await db.collection("segments").where("projectId", "==", projectId).get();
   segments.forEach(async (doc) => await db.collection("segments").doc(doc.id).delete());
+  logHistory(projectId, `Project deleted.`);
   loadProjectList();
 };
 
 window.toggleArchive = async function(projectId, isActive) {
   await db.collection("projects").doc(projectId).update({ archived: !isActive });
+  logHistory(projectId, isActive ? "Project archived." : "Project restored.");
   loadProjectList();
 };
 
 window.switchProject = function(projectId) {
+  closePanels();
   currentProjectId = projectId;
   document.getElementById('projectMenu').style.display = 'none';
   document.getElementById('backBar').style.display = '';
+  document.getElementById('messagesBtn').disabled = false;
+  document.getElementById('historyBtn').disabled = false;
   db.collection("projects").doc(projectId).get().then(doc => {
     if (doc.exists) {
       document.getElementById("currentProjectName").textContent = doc.data().name;
@@ -78,11 +83,14 @@ window.switchProject = function(projectId) {
 };
 
 window.returnToProjectList = function() {
+  closePanels();
   currentProjectId = null;
   document.getElementById('projectMenu').style.display = '';
   document.getElementById('backBar').style.display = 'none';
   document.getElementById('currentProjectName').textContent = "";
   document.getElementById('segmentList').innerHTML = '';
+  document.getElementById('messagesBtn').disabled = true;
+  document.getElementById('historyBtn').disabled = true;
   Object.values(statusLayers).forEach(layer => layer.clearLayers());
   loadProjectList();
 };
@@ -90,7 +98,15 @@ window.returnToProjectList = function() {
 window.toggleArchived = function() {
   showArchived = !showArchived;
   loadProjectList();
+  updateArchiveBtnLabel();
 };
+
+function updateArchiveBtnLabel() {
+  const btn = document.getElementById('archiveToggleBtn');
+  if (btn) {
+    btn.textContent = showArchived ? "View Active Projects" : "View Archived Projects";
+  }
+}
 
 async function loadProjectList() {
   const listDiv = document.getElementById("projectList");
@@ -118,6 +134,7 @@ async function loadProjectList() {
     `;
   });
   listDiv.innerHTML = html || "<p>No projects found.</p>";
+  updateArchiveBtnLabel();
 }
 
 // ==== Map + Segments Logic ====
@@ -155,8 +172,7 @@ window.map.on(L.Draw.Event.CREATED, async function (e) {
 
   drawnItems.addLayer(layer);
 
-  // Build popup form from config
-  await loadGlobalConfig(); // Always get latest config
+  await loadGlobalConfig();
 
   const uniqueId = `submitSegment_${Date.now()}_${Math.floor(Math.random()*10000)}`;
   let popupHtml = `<form id="segmentForm">`;
@@ -197,7 +213,8 @@ window.map.on(L.Draw.Event.CREATED, async function (e) {
           segData[field.key] = val;
         }
         try {
-          await db.collection("segments").add(segData);
+          const ref = await db.collection("segments").add(segData);
+          logHistory(currentProjectId, `Segment created: ${summaryFromFields(segData)}`);
           loadSegments();
           loadSegmentListSidebar();
           window.map.closePopup();
@@ -208,6 +225,16 @@ window.map.on(L.Draw.Event.CREATED, async function (e) {
     }
   }, 200);
 });
+
+function summaryFromFields(obj) {
+  let txt = [];
+  for (const field of globalConfigFields) {
+    if (field.key && obj[field.key] && field.show) {
+      txt.push(`${field.label}: ${obj[field.key]}`);
+    }
+  }
+  return txt.join(" / ");
+}
 
 // ==== Load Segments on Map ====
 function loadSegments() {
@@ -231,7 +258,6 @@ function loadSegments() {
             weight: 4
           }
         }).addTo(statusLayers[data.status || "Not Located"]);
-        // Build popup using config fields
         let popupHtml = "";
         for (const field of globalConfigFields) {
           if (data[field.key] !== undefined && field.show)
@@ -240,7 +266,6 @@ function loadSegments() {
         layer.bindPopup(popupHtml);
         layersForBounds.push(layer);
       });
-      // Fit map to bounds of segments
       if (layersForBounds.length > 0) {
         let bounds = null;
         layersForBounds.forEach(l => {
@@ -296,7 +321,6 @@ async function loadSegmentListSidebar() {
     html += `<div class="segment-item">`;
     for (const field of globalConfigFields) {
       if (!field.show) continue;
-      // Status field becomes a dropdown for editing
       if (field.key === "status") {
         html += `<div><strong>${field.label}:</strong>
           <select onchange="window.updateSegmentStatus('${doc.id}', this.value)">
@@ -315,59 +339,121 @@ async function loadSegmentListSidebar() {
 
 window.updateSegmentStatus = async function(segmentId, newStatus) {
   await db.collection("segments").doc(segmentId).update({ status: newStatus });
+  const doc = await db.collection("segments").doc(segmentId).get();
+  logHistory(currentProjectId, `Segment status updated: ${summaryFromFields(doc.data())}`);
   loadSegments();
   loadSegmentListSidebar();
 };
 
 window.toggleSegmentArchive = async function(segmentId, archiveVal) {
   await db.collection("segments").doc(segmentId).update({ archived: archiveVal });
+  const doc = await db.collection("segments").doc(segmentId).get();
+  logHistory(currentProjectId, archiveVal ? `Segment archived: ${summaryFromFields(doc.data())}` : `Segment restored: ${summaryFromFields(doc.data())}`);
   loadSegments();
   loadSegmentListSidebar();
 };
+
+// ==== MESSAGES & HISTORY PANEL LOGIC ====
+
+window.openMessages = function() {
+  document.getElementById('messagesPanel').style.display = 'block';
+  document.getElementById('historyPanel').style.display = 'none';
+  document.getElementById('segmentList').style.display = 'none';
+  renderMessagesPanel();
+};
+window.openHistory = function() {
+  document.getElementById('messagesPanel').style.display = 'none';
+  document.getElementById('historyPanel').style.display = 'block';
+  document.getElementById('segmentList').style.display = 'none';
+  renderHistoryPanel();
+};
+function closePanels() {
+  document.getElementById('messagesPanel').style.display = 'none';
+  document.getElementById('historyPanel').style.display = 'none';
+  document.getElementById('segmentList').style.display = '';
+}
+
+// Messenger UI
+function renderMessagesPanel() {
+  if (!currentProjectId) return;
+  const div = document.getElementById('messagesPanel');
+  div.innerHTML = `
+    <button class="panel-close-btn" onclick="closePanels()" title="Close">&times;</button>
+    <h3>💬 Messages</h3>
+    <div id="chatMessages"></div>
+    <textarea id="newMsg" rows="2" style="width:98%" placeholder="Type message..."></textarea>
+    <button onclick="sendMessage()" style="margin-top:3px;width:50%;">Send</button>
+  `;
+  loadMessages();
+}
+
+// History UI
+function renderHistoryPanel() {
+  if (!currentProjectId) return;
+  const div = document.getElementById('historyPanel');
+  div.innerHTML = `
+    <button class="panel-close-btn" onclick="closePanels()" title="Close">&times;</button>
+    <h3>📜 Project History</h3>
+    <div id="historyLog"></div>
+  `;
+  loadHistory();
+}
+
+// Messenger logic
+function loadMessages() {
+  if (!currentProjectId) return;
+  db.collection("projects").doc(currentProjectId).collection("messages").orderBy("timestamp")
+    .onSnapshot(snap => {
+      const div = document.getElementById('chatMessages');
+      let html = '';
+      snap.forEach(doc => {
+        const m = doc.data();
+        html += `<div style="margin-bottom:4px;"><span style="color:#1976d2"><strong>${m.user||'User'}:</strong></span> ${m.text}</div>`;
+      });
+      div.innerHTML = html || '<em>No messages yet.</em>';
+      div.scrollTop = div.scrollHeight;
+    });
+}
+function sendMessage() {
+  const val = document.getElementById('newMsg').value.trim();
+  if (!val || !currentProjectId) return;
+  db.collection("projects").doc(currentProjectId).collection("messages").add({
+    text: val,
+    user: "User", // TODO: Replace with actual username if available
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  document.getElementById('newMsg').value = '';
+}
+
+// History logic
+function loadHistory() {
+  if (!currentProjectId) return;
+  db.collection("projects").doc(currentProjectId).collection("history").orderBy("timestamp")
+    .get().then(snap => {
+      const div = document.getElementById('historyLog');
+      let html = '';
+      snap.forEach(doc => {
+        const h = doc.data();
+        html += `<div><strong>[${(h.timestamp&&h.timestamp.toDate().toLocaleString())||''}]</strong> ${h.event}</div>`;
+      });
+      div.innerHTML = html || '<em>No history yet.</em>';
+    });
+}
+
+function logHistory(projectId, eventText) {
+  if (!projectId) return;
+  db.collection("projects").doc(projectId).collection("history").add({
+    event: eventText,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+    user: "User"
+  });
+}
 
 // ==== Initial Load ====
 window.onload = async function() {
   await loadGlobalConfig();
   const urlParams = new URLSearchParams(window.location.search);
   const urlProjectId = urlParams.get("projectId");
-  if (urlProjectId) {
-    switchProject(urlProjectId);
-    document.getElementById('projectMenu').style.display = 'none';
-    document.getElementById('backBar').style.display = '';
-  } else {
-    document.getElementById('projectMenu').style.display = '';
-    document.getElementById('backBar').style.display = 'none';
-    loadProjectList();
-  }
-};
-
-// Sidebar slider (centered, modern style)
-document.addEventListener("DOMContentLoaded", function() {
-  const sidebar = document.getElementById('sidebar');
-  const mapDiv = document.getElementById('map');
-  const slider = document.getElementById('sidebarSlider');
-  let collapsed = false;
-
-  function updateSidebarSlider() {
-    if (collapsed) {
-      sidebar.style.display = 'none';
-      mapDiv.style.marginLeft = '0';
-      slider.classList.add('collapsed');
-    } else {
-      sidebar.style.display = '';
-      mapDiv.style.marginLeft = '';
-      slider.classList.remove('collapsed');
-    }
-    setTimeout(() => { 
-      if (window.map && window.map.invalidateSize) window.map.invalidateSize();
-    }, 300);
-  }
-
-  if (slider) {
-    slider.onclick = function() {
-      collapsed = !collapsed;
-      updateSidebarSlider();
-    };
-    updateSidebarSlider();
-  }
-});
+  document.getElementById('messagesBtn').disabled = true;
+  document.getElementById('historyBtn').disabled = true;
+  if (urlProjectId)
