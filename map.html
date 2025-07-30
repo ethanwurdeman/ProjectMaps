@@ -19,13 +19,14 @@
       font-family: Arial, sans-serif;
     }
     #sidebar {
-      width: 325px;
+      width: 340px;
       background: #f4f4f4;
       padding: 18px 12px;
       overflow-y: auto;
       border-right: 1px solid #ccc;
       box-sizing: border-box;
       transition: all 0.2s;
+      position: relative;
     }
     #map {
       flex: 1;
@@ -123,6 +124,39 @@
       content: '⟩';
       right: 7px;
     }
+    /* Messages & history panel */
+    #messagesPanel, #historyPanel {
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 7px;
+      margin-top: 16px;
+      padding: 10px 8px 8px 8px;
+      min-height: 120px;
+      box-shadow: 0 2px 7px #e0e0e0;
+      display: none;
+    }
+    #chatMessages, #historyLog {
+      max-height: 180px;
+      overflow-y: auto;
+      background: #fafafa;
+      padding: 6px;
+      border: 1px solid #eee;
+      margin-bottom: 8px;
+    }
+    .panel-close-btn {
+      float: right;
+      font-size: 1.3em;
+      color: #b00;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      margin-top: -6px;
+    }
+    @media (max-width: 800px) {
+      #sidebar { width: 100vw; max-width: 98vw; }
+      #map { display: none; }
+      #sidebarSlider { display: none; }
+    }
   </style>
 </head>
 <body>
@@ -140,17 +174,27 @@
 
     <!-- Project list/creation menu -->
     <div id="projectMenu">
-      <h2>🗂 Projects</h2>
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <h2 style="margin: 0;">🗂 Projects</h2>
+        <div>
+          <button id="messagesBtn" title="Messages" style="font-size:1.4em;vertical-align:middle; margin-right:6px;" onclick="openMessages()" disabled>💬</button>
+          <button id="historyBtn" title="History" style="font-size:1.4em;vertical-align:middle;" onclick="openHistory()" disabled>📜</button>
+        </div>
+      </div>
       <div>
         <input type="text" id="newProjectName" placeholder="New Project Name" style="width: 100%; margin-bottom: 10px;" />
         <button onclick="createProject()">➕ Create</button>
-        <button onclick="toggleArchived()">🔁 Toggle Archived</button>
+        <button id="archiveToggleBtn" onclick="toggleArchived()" style="margin-left:7px"></button>
       </div>
       <div id="projectList"><p>Loading...</p></div>
     </div>
 
     <!-- Segment list for active project -->
     <div id="segmentList"></div>
+    <!-- Messenger panel (hidden by default) -->
+    <div id="messagesPanel"></div>
+    <!-- History panel (hidden by default) -->
+    <div id="historyPanel"></div>
   </div>
   <div id="map"></div>
 
@@ -186,12 +230,13 @@
         }, 300);
       }
 
-      slider.onclick = function() {
-        collapsed = !collapsed;
+      if (slider) {
+        slider.onclick = function() {
+          collapsed = !collapsed;
+          updateSidebarSlider();
+        };
         updateSidebarSlider();
-      };
-
-      updateSidebarSlider();
+      }
     });
   </script>
 </body>
