@@ -152,17 +152,9 @@ const topo = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", { a
 // --- Add default base map to map (OSM) ---
 window.map = L.map("map", {
   center: [41.865, -103.667],
-  zoom: 12,
+  zoom: 10,
   layers: [osm] // default layer
 });
-
-// --- Overlays (as before) ---
-const drawnItems = new L.FeatureGroup().addTo(window.map);
-const statusLayers = {
-  "Not Located": new L.FeatureGroup().addTo(window.map),
-  "In Progress": new L.FeatureGroup().addTo(window.map),
-  "Located": new L.FeatureGroup().addTo(window.map)
-};
 
 // --- Layer control with baseMaps and overlays, placed at topleft ---
 const baseMaps = {
@@ -181,7 +173,7 @@ const drawControl = new L.Control.Draw({
     polyline: true,
     rectangle: false,
     circle: false,
-    marker: false,
+    marker: true,
     circlemarker: false
   }
 });
