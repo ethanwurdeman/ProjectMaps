@@ -45,19 +45,21 @@
       display: none;
     }
     #collapseBtn {
-      position: absolute;
-      top: 50%;
-      left: 100%;
-      transform: translateY(-50%);
-      z-index: 10;
-      padding: 4px 6px;
-      cursor: pointer;
-      background: #fff;
-      border: 1px solid #ccc;
-      border-radius: 4px 0 0 4px;
-      box-shadow: 1px 2px 4px rgba(0,0,0,0.07);
-      transition: background 0.2s;
-    }
+  position: absolute;
+  top: 50%;
+  right: -20px;         /* Instead of left: 100% */
+  left: auto;           /* Remove left */
+  transform: translateY(-50%);
+  z-index: 999;
+  padding: 6px 8px;
+  background: #ffeeba;
+  border: 1px solid #ccc;
+  border-radius: 0 4px 4px 0;
+  box-shadow: 1px 2px 4px rgba(0,0,0,0.10);
+  font-size: 1.2em;
+  cursor: pointer;
+}
+
     #collapseBtn:hover {
       background: #f0f0f0;
     }
