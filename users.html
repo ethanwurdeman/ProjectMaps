@@ -14,6 +14,22 @@
     tr:nth-child(even) { background: #fafafa; }
     button { padding: 5px 12px; }
     .admin { color: green; }
+    /* Edit dialog */
+    #editUserModal {
+      display: none; position: fixed; left: 0; top: 0; width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.32); z-index: 9999; align-items: center; justify-content: center;
+    }
+    #editUserModal .dialog {
+      background: #fff; padding: 32px; border-radius: 8px; max-width: 400px; width: 95vw; position: relative;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.16);
+      display: flex; flex-direction: column;
+    }
+    #editUserModal button.closeBtn {
+      position: absolute; top: 12px; right: 12px; font-size: 1.4em; background: none; border: none; cursor: pointer;
+    }
+    #editUserProjects {
+      max-height: 150px; overflow-y: auto; border: 1px solid #eee; padding: 8px; margin-top: 4px; background: #fafafa;
+    }
   </style>
 </head>
 <body>
@@ -30,23 +46,53 @@
     <tbody></tbody>
   </table>
   <button onclick="window.location='dashboard.html'">Back to Dashboard</button>
+
+  <!-- Edit User Dialog -->
+  <div id="editUserModal">
+    <div class="dialog">
+      <button class="closeBtn" onclick="closeEditUser()">&times;</button>
+      <h3>Edit User</h3>
+      <div><b id="editUserName"></b> <span id="editUserEmail" style="font-size:0.95em;"></span></div>
+      <div style="margin-top:18px;">
+        <label>Role:
+          <select id="editUserRole">
+            <option value="admin">Admin</option>
+            <option value="utilityOwner">Utility Owner</option>
+            <option value="projectManager">Project Manager</option>
+            <option value="utilityLocator">Utility Locator</option>
+            <option value="subcontractor">Subcontractor</option>
+          </select>
+        </label>
+      </div>
+      <div style="margin-top:12px;">
+        <label>Assigned Projects:</label>
+        <div id="editUserProjects"></div>
+      </div>
+      <button style="margin-top:18px;" onclick="saveEditUser()">Save</button>
+    </div>
+  </div>
+
+  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script>
     const firebaseConfig = {
-  apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
-  authDomain: "projectmap-35a69.firebaseapp.com",
-  projectId: "projectmap-35a69", // <---- THIS MUST BE PRESENT!
-  storageBucket: "projectmap-35a69.appspot.com",
-  messagingSenderId: "676439686152",
-  appId: "1:676439686152:web:0fdc2d8aab41aec67fa5bd"
-};
-firebase.initializeApp(firebaseConfig);
+      apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
+      authDomain: "projectmap-35a69.firebaseapp.com",
+      projectId: "projectmap-35a69", // <---- THIS MUST BE PRESENT!
+      storageBucket: "projectmap-35a69.appspot.com",
+      messagingSenderId: "676439686152",
+      appId: "1:676439686152:web:0fdc2d8aab41aec67fa5bd"
+    };
+    firebase.initializeApp(firebaseConfig);
 
     const db = firebase.firestore();
     let users = [];
-    // You could check for admin here and redirect if not
+    let allProjects = [];
+    let editingUser = null;
+
+    // Only allow access if logged in as admin
     firebase.auth().onAuthStateChanged(async user => {
       if (!user) { window.location = 'index.html'; return; }
       const userDoc = await db.collection('users').doc(user.uid).get();
@@ -55,6 +101,7 @@ firebase.initializeApp(firebaseConfig);
       }
       loadUsers();
     });
+
     async function loadUsers() {
       const snap = await db.collection('users').get();
       users = [];
@@ -70,8 +117,15 @@ firebase.initializeApp(firebaseConfig);
           assignedProjects: d.assignedProjects || []
         });
       });
+      // Load all projects for assignment
+      const projectsSnap = await db.collection('projects').get();
+      allProjects = [];
+      projectsSnap.forEach(doc => {
+        allProjects.push({ id: doc.id, name: doc.data().name });
+      });
       renderUsers();
     }
+
     function renderUsers() {
       const tbody = document.querySelector('#usersTable tbody');
       const q = document.getElementById('searchBox').value.trim().toLowerCase();
@@ -84,7 +138,10 @@ firebase.initializeApp(firebaseConfig);
             <td>${u.phone || ''}</td>
             <td>${u.company || ''}</td>
             <td class="${u.role === 'admin' ? 'admin' : ''}">${u.role}</td>
-            <td>${u.assignedProjects.join(', ')}</td>
+            <td>${(u.assignedProjects.map(id => {
+              const proj = allProjects.find(p => p.id === id);
+              return proj ? proj.name : id;
+            }).join(', ')) || ''}</td>
             <td>
               <button onclick="editUser('${u.id}')">Edit</button>
             </td>
@@ -92,9 +149,50 @@ firebase.initializeApp(firebaseConfig);
         `;
       });
     }
+
     function editUser(uid) {
-      alert("Open edit dialog for: " + uid + " (not implemented yet)");
-      // You could make a popup or new page with user editing
+      const user = users.find(u => u.id === uid);
+      if (!user) return;
+      editingUser = user;
+      // Set dialog fields
+      document.getElementById('editUserName').innerText = user.name || '';
+      document.getElementById('editUserEmail').innerText = `(${user.email})`;
+      document.getElementById('editUserRole').value = user.role || '';
+      // Show all projects as checkboxes
+      let projHtml = '';
+      for (const proj of allProjects) {
+        const checked = user.assignedProjects?.includes(proj.id) ? 'checked' : '';
+        projHtml += `<div>
+          <label>
+            <input type="checkbox" value="${proj.id}" ${checked}> ${proj.name}
+          </label>
+        </div>`;
+      }
+      document.getElementById('editUserProjects').innerHTML = projHtml;
+      document.getElementById('editUserModal').style.display = 'flex';
+    }
+
+    function closeEditUser() {
+      document.getElementById('editUserModal').style.display = 'none';
+      editingUser = null;
+    }
+
+    async function saveEditUser() {
+      if (!editingUser) return;
+      const newRole = document.getElementById('editUserRole').value;
+      const checkboxes = document.querySelectorAll('#editUserProjects input[type=checkbox]');
+      const assignedProjects = Array.from(checkboxes)
+        .filter(cb => cb.checked)
+        .map(cb => cb.value);
+
+      await db.collection('users').doc(editingUser.id).update({
+        role: newRole,
+        assignedProjects
+      });
+
+      closeEditUser();
+      loadUsers();
+      alert('User updated!');
     }
   </script>
 </body>
