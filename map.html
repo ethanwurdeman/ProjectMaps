@@ -48,16 +48,18 @@
 </head>
 <body>
   <div id="sidebar">
-    <h2>🗂 Projects</h2>
-    <div>
-      <input type="text" id="newProjectName" placeholder="New Project Name" style="width: 100%; margin-bottom: 10px;" />
-      <button onclick="createProject()">➕ Create</button>
-      <button onclick="toggleArchived()">
-        🔁 Toggle Archived
-      </button>
-    </div>
-    <div id="projectList"><p>Loading...</p></div>
+  <h2>🗂 Projects</h2>
+  <div>
+    <input type="text" id="newProjectName" placeholder="New Project Name" style="width: 100%; margin-bottom: 10px;" />
+    <button onclick="createProject()">➕ Create</button>
+    <button onclick="toggleArchived()">
+      🔁 Toggle Archived
+    </button>
   </div>
+  <div id="projectList"><p>Loading...</p></div>
+  <div id="segmentList"></div>
+</div>
+
   <div id="map"></div>
 
   <!-- Firebase SDKs -->
