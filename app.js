@@ -38,7 +38,7 @@ window.createProject = async function() {
 window.deleteProject = async function(projectId) {
   if (!confirm("Are you sure you want to delete this project?")) return;
   await db.collection("projects").doc(projectId).delete();
-  // Remove all segments for this project as well (optional)
+  // Remove all segments for this project as well
   const segments = await db.collection("segments").where("projectId", "==", projectId).get();
   segments.forEach(async (doc) => await db.collection("segments").doc(doc.id).delete());
   loadProjectList();
@@ -145,50 +145,82 @@ map.on(L.Draw.Event.CREATED, function (e) {
 
   // Wait for the popup to actually exist in the DOM:
   setTimeout(() => {
-  const btn = document.getElementById(uniqueId);
-  if (btn) {
-    btn.onclick = async () => {
-      const ticket = document.getElementById("ticketInput").value;
-      const locationVal = document.getElementById("locationInput").value;
-      const status = document.getElementById("statusInput").value;
+    const btn = document.getElementById(uniqueId);
+    if (btn) {
+      btn.onclick = async () => {
+        const ticket = document.getElementById("ticketInput").value;
+        const locationVal = document.getElementById("locationInput").value;
+        const status = document.getElementById("statusInput").value;
 
-      if (!ticket || !locationVal) {
-        alert("Please fill in ticket and location!");
-        return;
-      }
+        if (!ticket || !locationVal) {
+          alert("Please fill in ticket and location!");
+          return;
+        }
 
-      // Diagnostic log to check what will be saved
-      let geojsonString = "";
-      try {
-        geojsonString = JSON.stringify(geojson);
-        // Let's also prove that it is a string, not an object!
-        console.log("geojson typeof:", typeof geojsonString, geojsonString);
-      } catch (err) {
-        alert("GeoJSON could not be stringified!");
-        return;
-      }
+        let geojsonString;
+        try {
+          geojsonString = JSON.stringify(geojson);
+        } catch (err) {
+          alert("GeoJSON could not be stringified!");
+          return;
+        }
 
-      try {
-        await db.collection("segments").add({
-          projectId: currentProjectId,
-          ticketNumber: ticket,
-          location: locationVal,
-          status,
-          geojson: geojsonString, // absolutely a string!
-          timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        alert("✅ Segment saved!");
-        location.reload();
-      } catch (err) {
-        alert("❌ Error: " + err.message);
-      }
-    };
-  }
-}, 200);
-
+        try {
+          await db.collection("segments").add({
+            projectId: currentProjectId,
+            ticketNumber: ticket,
+            location: locationVal,
+            status,
+            geojson: geojsonString,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          alert("✅ Segment saved!");
+          location.reload();
+        } catch (err) {
+          alert("❌ Error: " + err.message);
+        }
+      };
+    }
+  }, 200);
 });
 
-// Load and render segments for the current project in the sidebar
+function loadSegments() {
+  // Remove previous layers
+  Object.values(statusLayers).forEach(layer => layer.clearLayers());
+  if (!currentProjectId) return;
+
+  db.collection("segments")
+    .where("projectId", "==", currentProjectId)
+    .get()
+    .then(snap => {
+      snap.forEach(doc => {
+        const data = doc.data();
+        let geojson = {};
+        try {
+          geojson = JSON.parse(data.geojson);
+        } catch (err) {
+          console.error("Invalid GeoJSON", err, data.geojson);
+          return; // skip this one
+        }
+        if (!geojson.properties) geojson.properties = {}; // Clean GeoJSON
+        const layer = L.geoJSON(geojson, {
+          style: {
+            color: data.status === "Located" ? "green" :
+                   data.status === "In Progress" ? "orange" : "red",
+            weight: 4
+          }
+        }).addTo(statusLayers[data.status]);
+        layer.bindPopup(`
+          <strong>Ticket:</strong> ${data.ticketNumber}<br/>
+          <strong>Location:</strong> ${data.location}<br/>
+          <strong>Status:</strong> ${data.status}
+        `);
+      });
+    });
+}
+
+// ==== Segment List in Sidebar and Status Update ====
+
 async function loadSegmentListSidebar() {
   const segmentListDiv = document.getElementById("segmentList");
   if (!currentProjectId) {
@@ -226,13 +258,11 @@ async function loadSegmentListSidebar() {
   segmentListDiv.innerHTML = html;
 }
 
-// Function to update status
 window.updateSegmentStatus = async function(segmentId, newStatus) {
   await db.collection("segments").doc(segmentId).update({ status: newStatus });
   loadSegments();
   loadSegmentListSidebar();
 };
-
 
 // ==== Initial Load ====
 window.onload = function() {
