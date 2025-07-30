@@ -13,10 +13,10 @@ const db = firebase.firestore();
 // ==== Utility ====
 let currentProjectId = null;
 let showArchived = false;
-let showArchivedSegments = false; // <--- NEW
 
 // ==== Sidebar Dashboard Logic ====
 
+// Attach functions globally so HTML onclick can find them:
 window.createProject = async function() {
   const name = document.getElementById("newProjectName").value.trim();
   if (!name) return alert("Project name required.");
@@ -28,6 +28,7 @@ window.createProject = async function() {
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     loadProjectList();
+    // Switch to new project:
     switchProject(ref.id);
   } catch (e) {
     alert("Error creating project: " + e.message);
@@ -37,6 +38,7 @@ window.createProject = async function() {
 window.deleteProject = async function(projectId) {
   if (!confirm("Are you sure you want to delete this project?")) return;
   await db.collection("projects").doc(projectId).delete();
+  // Remove all segments for this project as well
   const segments = await db.collection("segments").where("projectId", "==", projectId).get();
   segments.forEach(async (doc) => await db.collection("segments").doc(doc.id).delete());
   loadProjectList();
@@ -48,28 +50,8 @@ window.toggleArchive = async function(projectId, isActive) {
 };
 
 window.switchProject = function(projectId) {
-  currentProjectId = projectId;
-  document.getElementById('projectMenu').style.display = 'none';
-  document.getElementById('backBar').style.display = '';
-  db.collection("projects").doc(projectId).get().then(doc => {
-    if (doc.exists) {
-      document.getElementById("currentProjectName").textContent = doc.data().name;
-    } else {
-      document.getElementById("currentProjectName").textContent = "Unknown Project";
-    }
-  });
-  loadSegments();
-  loadSegmentListSidebar();
-};
-
-window.returnToProjectList = function() {
-  currentProjectId = null;
-  document.getElementById('projectMenu').style.display = '';
-  document.getElementById('backBar').style.display = 'none';
-  document.getElementById('currentProjectName').textContent = "";
-  document.getElementById('segmentList').innerHTML = '';
-  Object.values(statusLayers).forEach(layer => layer.clearLayers());
-  loadProjectList();
+  // Reload page with the chosen project:
+  window.location.href = `map.html?projectId=${projectId}`;
 };
 
 window.toggleArchived = function() {
@@ -109,9 +91,11 @@ async function loadProjectList() {
 const urlParams = new URLSearchParams(window.location.search);
 currentProjectId = urlParams.get("projectId");
 
+// Init map
 const map = L.map("map").setView([41.865, -103.667], 12);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
+// Draw controls
 const drawnItems = new L.FeatureGroup().addTo(map);
 const statusLayers = {
   "Not Located": new L.FeatureGroup().addTo(map),
@@ -132,13 +116,15 @@ const drawControl = new L.Control.Draw({
 });
 map.addControl(drawControl);
 
+// --- Draw Event with stringified GeoJSON ---
 map.on(L.Draw.Event.CREATED, function (e) {
   const layer = e.layer;
   let geojson = layer.toGeoJSON();
   if (!geojson.properties) geojson.properties = {};
 
-  drawnItems.addLayer(layer);
+  drawnItems.addLayer(layer); // always add drawn feature to map
 
+  // Use a unique ID so event handler always attaches to the right popup
   const uniqueId = `submitSegment_${Date.now()}_${Math.floor(Math.random()*10000)}`;
   const popupHtml = `
     <div style="min-width:180px">
@@ -157,59 +143,56 @@ map.on(L.Draw.Event.CREATED, function (e) {
   `;
   layer.bindPopup(popupHtml).openPopup();
 
+  // Wait for the popup to actually exist in the DOM:
   setTimeout(() => {
-  const btn = document.getElementById(uniqueId);
-  if (btn) {
-    btn.onclick = async () => {
-      const ticket = document.getElementById("ticketInput").value;
-      const locationVal = document.getElementById("locationInput").value;
-      const status = document.getElementById("statusInput").value;
+    const btn = document.getElementById(uniqueId);
+    if (btn) {
+      btn.onclick = async () => {
+        const ticket = document.getElementById("ticketInput").value;
+        const locationVal = document.getElementById("locationInput").value;
+        const status = document.getElementById("statusInput").value;
 
-      if (!ticket || !locationVal) {
-        alert("Please fill in ticket and location!");
-        return;
-      }
+        if (!ticket || !locationVal) {
+          alert("Please fill in ticket and location!");
+          return;
+        }
 
-      let geojsonString;
-      try {
-        geojsonString = JSON.stringify(geojson);
-      } catch (err) {
-        alert("GeoJSON could not be stringified!");
-        return;
-      }
+        let geojsonString;
+        try {
+          geojsonString = JSON.stringify(geojson);
+        } catch (err) {
+          alert("GeoJSON could not be stringified!");
+          return;
+        }
 
-      try {
-        await db.collection("segments").add({
-          projectId: currentProjectId,
-          ticketNumber: ticket,
-          location: locationVal,
-          status,
-          geojson: geojsonString,
-          archived: false,
-          timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        // 👇 Instead of alert + reload, do this:
-        loadSegments();
-        loadSegmentListSidebar();
-        map.closePopup(); // Close the popup after save
-      } catch (err) {
-        alert("❌ Error: " + err.message);
-      }
-    };
-  }
-}, 200);
+        try {
+          await db.collection("segments").add({
+            projectId: currentProjectId,
+            ticketNumber: ticket,
+            location: locationVal,
+            status,
+            geojson: geojsonString,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          alert("✅ Segment saved!");
+          location.reload();
+        } catch (err) {
+          alert("❌ Error: " + err.message);
+        }
+      };
+    }
+  }, 200);
 });
 
 function loadSegments() {
+  // Remove previous layers
   Object.values(statusLayers).forEach(layer => layer.clearLayers());
   if (!currentProjectId) return;
 
   db.collection("segments")
     .where("projectId", "==", currentProjectId)
-    .where("archived", "==", false)
     .get()
     .then(snap => {
-      const layersForBounds = [];
       snap.forEach(doc => {
         const data = doc.data();
         let geojson = {};
@@ -217,9 +200,9 @@ function loadSegments() {
           geojson = JSON.parse(data.geojson);
         } catch (err) {
           console.error("Invalid GeoJSON", err, data.geojson);
-          return;
+          return; // skip this one
         }
-        if (!geojson.properties) geojson.properties = {};
+        if (!geojson.properties) geojson.properties = {}; // Clean GeoJSON
         const layer = L.geoJSON(geojson, {
           style: {
             color: data.status === "Located" ? "green" :
@@ -232,33 +215,11 @@ function loadSegments() {
           <strong>Location:</strong> ${data.location}<br/>
           <strong>Status:</strong> ${data.status}
         `);
-        // Collect for bounds
-        layersForBounds.push(layer);
       });
-
-      // 🟢 Auto-zoom if there are segments
-      if (layersForBounds.length > 0) {
-        // Combine all bounds
-        let bounds = null;
-        layersForBounds.forEach(l => {
-          try {
-            const lb = l.getBounds();
-            bounds = bounds ? bounds.extend(lb) : lb;
-          } catch { /* skip if marker */ }
-        });
-        if (bounds && bounds.isValid()) {
-          map.fitBounds(bounds.pad(0.2)); // Slight padding for visual comfort
-        }
-      }
     });
 }
 
-// ==== Segment List in Sidebar, Archive, and Status Update ====
-
-window.toggleArchivedSegments = function() {
-  showArchivedSegments = !showArchivedSegments;
-  loadSegmentListSidebar();
-};
+// ==== Segment List in Sidebar and Status Update ====
 
 async function loadSegmentListSidebar() {
   const segmentListDiv = document.getElementById("segmentList");
@@ -267,30 +228,20 @@ async function loadSegmentListSidebar() {
     return;
   }
 
-  let query = db.collection("segments")
+  const snap = await db.collection("segments")
     .where("projectId", "==", currentProjectId)
-    .where("archived", "==", !!showArchivedSegments);
-
-  const snap = await query.get();
-
-  let html = `
-    <h3 style="display:inline">Segments</h3>
-    <button onclick="toggleArchivedSegments()" style="float:right;">
-      ${showArchivedSegments ? 'Show Active' : 'Show Archived'}
-    </button>
-    <div style="clear:both"></div>
-  `;
+    .get();
 
   if (snap.empty) {
-    html += "<em>No segments yet.</em>";
-    segmentListDiv.innerHTML = html;
+    segmentListDiv.innerHTML = "<em>No segments yet.</em>";
     return;
   }
 
+  let html = "<h3>Segments</h3>";
   snap.forEach(doc => {
     const data = doc.data();
     html += `
-      <div class="segment-item">
+      <div class="segment-item" style="border:1px solid #ddd; border-radius:4px; padding:6px; margin-bottom:5px;">
         <div><strong>Ticket:</strong> ${data.ticketNumber}</div>
         <div><strong>Location:</strong> ${data.location}</div>
         <div>
@@ -301,9 +252,6 @@ async function loadSegmentListSidebar() {
             <option value="Located" ${data.status === "Located" ? "selected" : ""}>Located</option>
           </select>
         </div>
-        <button onclick="window.toggleSegmentArchive('${doc.id}', ${!data.archived})">
-          ${data.archived ? 'Restore' : 'Archive'}
-        </button>
       </div>
     `;
   });
@@ -316,23 +264,11 @@ window.updateSegmentStatus = async function(segmentId, newStatus) {
   loadSegmentListSidebar();
 };
 
-window.toggleSegmentArchive = async function(segmentId, archiveVal) {
-  await db.collection("segments").doc(segmentId).update({ archived: archiveVal });
-  loadSegments();
-  loadSegmentListSidebar();
-};
-
 // ==== Initial Load ====
 window.onload = function() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const urlProjectId = urlParams.get("projectId");
-  if (urlProjectId) {
-    switchProject(urlProjectId);
-    document.getElementById('projectMenu').style.display = 'none';
-    document.getElementById('backBar').style.display = '';
-  } else {
-    document.getElementById('projectMenu').style.display = '';
-    document.getElementById('backBar').style.display = 'none';
-    loadProjectList();
+  loadProjectList();
+  if (currentProjectId) {
+    loadSegments();
+    loadSegmentListSidebar();
   }
 };
