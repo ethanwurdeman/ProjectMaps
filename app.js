@@ -476,6 +476,17 @@ function logHistory(projectId, eventText) {
     user: "User"
   });
 }
+// Sidebar collapse logic
+window.toggleSidebar = function() {
+  const sidebar = document.getElementById('sidebar');
+  const btn = document.getElementById('collapseBtn');
+  sidebar.classList.toggle('collapsed');
+  if (sidebar.classList.contains('collapsed')) {
+    btn.innerHTML = '&#9654;';
+  } else {
+    btn.innerHTML = '&#9664;';
+  }
+}
 
 // ==== Initial Load ====
 window.onload = async function() {
