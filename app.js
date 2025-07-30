@@ -141,9 +141,22 @@ async function loadProjectList() {
 const urlParams = new URLSearchParams(window.location.search);
 currentProjectId = urlParams.get("projectId");
 
-window.map = L.map("map").setView([41.865, -103.667], 12);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(window.map);
+// --- Define base maps ---
+const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap" });
+const satellite = L.tileLayer(
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  { attribution: "© ESRI Satellite" }
+);
+const topo = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", { attribution: "© OpenTopoMap" });
 
+// --- Add default base map to map (OSM) ---
+window.map = L.map("map", {
+  center: [41.865, -103.667],
+  zoom: 12,
+  layers: [osm] // default layer
+});
+
+// --- Overlays (as before) ---
 const drawnItems = new L.FeatureGroup().addTo(window.map);
 const statusLayers = {
   "Not Located": new L.FeatureGroup().addTo(window.map),
@@ -151,6 +164,15 @@ const statusLayers = {
   "Located": new L.FeatureGroup().addTo(window.map)
 };
 
+// --- Layer control with baseMaps and overlays, placed at topleft ---
+const baseMaps = {
+  "Streets": osm,
+  "Satellite": satellite,
+  "Topo": topo
+};
+window.layersControl = L.control.layers(baseMaps, statusLayers, { position: 'topleft' }).addTo(window.map);
+
+// --- Draw Controls (as before, you can adjust position if you want) ---
 const drawControl = new L.Control.Draw({
   position: 'topleft',
   edit: false, // disables edit/delete toolbar
@@ -164,6 +186,7 @@ const drawControl = new L.Control.Draw({
   }
 });
 window.map.addControl(drawControl);
+
 
 // Move Layers Control to top left with draw tools
 window.layersControl = L.control.layers(null, statusLayers, { position: 'topleft' }).addTo(window.map);
