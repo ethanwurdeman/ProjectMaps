@@ -123,8 +123,10 @@
   <!-- Main App Logic -->
   <script src="app.js"></script>
   <script>
-    firebase.auth().onAuthStateChanged(user => {
-  if (!user) window.location.href = 'login.html';
+    firebase.auth().onAuthStateChanged(async user => {
+  if (!user) window.location.href = "login.html";
+  const userDoc = await firebase.firestore().collection('users').doc(user.uid).get();
+  window.currentUser = userDoc.data();
 });
 
     // Collapse/Expand Sidebar Button Logic
