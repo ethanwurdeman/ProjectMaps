@@ -1,0 +1,93 @@
+<!-- users.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>User Management – ProjectMap</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body { font-family: Arial, sans-serif; background: #f8f8f8; padding: 24px; }
+    h2 { margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    th { background: #f0f0f0; }
+    tr:nth-child(even) { background: #fafafa; }
+    button { padding: 5px 12px; }
+    .admin { color: green; }
+  </style>
+</head>
+<body>
+  <h2>User Management</h2>
+  <div>
+    <input type="text" id="searchBox" placeholder="Search name/email..." oninput="renderUsers()" />
+  </div>
+  <table id="usersTable">
+    <thead>
+      <tr>
+        <th>Name</th><th>Email</th><th>Phone</th><th>Company</th><th>Role</th><th>Projects</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <button onclick="window.location='dashboard.html'">Back to Dashboard</button>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script>
+    const firebaseConfig = {/* your config */};
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    let users = [];
+    // You could check for admin here and redirect if not
+    firebase.auth().onAuthStateChanged(async user => {
+      if (!user) { window.location = 'index.html'; return; }
+      const userDoc = await db.collection('users').doc(user.uid).get();
+      if (!userDoc.exists || userDoc.data().role !== 'admin') {
+        alert('Admins only!'); window.location = 'dashboard.html'; return;
+      }
+      loadUsers();
+    });
+    async function loadUsers() {
+      const snap = await db.collection('users').get();
+      users = [];
+      snap.forEach(doc => {
+        const d = doc.data();
+        users.push({
+          id: doc.id,
+          name: d.name,
+          email: d.email,
+          phone: d.phone,
+          company: d.company,
+          role: d.role,
+          assignedProjects: d.assignedProjects || []
+        });
+      });
+      renderUsers();
+    }
+    function renderUsers() {
+      const tbody = document.querySelector('#usersTable tbody');
+      const q = document.getElementById('searchBox').value.trim().toLowerCase();
+      tbody.innerHTML = '';
+      users.filter(u => u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q)).forEach(u => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${u.name || ''}</td>
+            <td>${u.email || ''}</td>
+            <td>${u.phone || ''}</td>
+            <td>${u.company || ''}</td>
+            <td class="${u.role === 'admin' ? 'admin' : ''}">${u.role}</td>
+            <td>${u.assignedProjects.join(', ')}</td>
+            <td>
+              <button onclick="editUser('${u.id}')">Edit</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+    function editUser(uid) {
+      alert("Open edit dialog for: " + uid + " (not implemented yet)");
+      // You could make a popup or new page with user editing
+    }
+  </script>
+</body>
+</html>
