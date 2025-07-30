@@ -251,6 +251,7 @@ function loadSegments() {
         let geojson = {};
         try { geojson = JSON.parse(data.geojson); } catch (err) { return; }
         if (!geojson.properties) geojson.properties = {};
+
         const layer = L.geoJSON(geojson, {
           style: {
             color: data.status === "Located" ? "green" :
@@ -258,11 +259,24 @@ function loadSegments() {
             weight: 4
           }
         }).addTo(statusLayers[data.status || "Not Located"]);
+
+        // Build popup HTML with editable status and delete button
         let popupHtml = "";
         for (const field of globalConfigFields) {
-          if (data[field.key] !== undefined && field.show)
-            popupHtml += `<strong>${field.label}:</strong> ${data[field.key]}<br/>`;
+          if (data[field.key] !== undefined && field.show) {
+            if (field.key === "status") {
+              popupHtml += `<div><strong>${field.label}:</strong>
+                <select id="popupStatus_${doc.id}">
+                  ${(field.options||[]).map(opt => `<option value="${opt}" ${data.status === opt ? "selected" : ""}>${opt}</option>`).join("")}
+                </select>
+                <button onclick="window.updateSegmentStatus('${doc.id}', document.getElementById('popupStatus_${doc.id}').value)">Save</button>
+              </div>`;
+            } else {
+              popupHtml += `<div><strong>${field.label}:</strong> ${data[field.key]}</div>`;
+            }
+          }
         }
+        popupHtml += `<button style="margin-top:8px;color:red" onclick="window.deleteSegment('${doc.id}')">🗑️ Delete Segment</button>`;
         layer.bindPopup(popupHtml);
         layersForBounds.push(layer);
       });
@@ -280,6 +294,15 @@ function loadSegments() {
       }
     });
 }
+
+// (And don't forget, in your global scope:)
+window.deleteSegment = async function(segmentId) {
+  if (!confirm("Delete this segment? This cannot be undone.")) return;
+  await db.collection("segments").doc(segmentId).delete();
+  logHistory(currentProjectId, "Segment deleted.");
+  loadSegments();
+  loadSegmentListSidebar();
+};
 
 // ==== Segment List in Sidebar ====
 
