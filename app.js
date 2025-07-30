@@ -239,5 +239,6 @@ window.onload = function() {
   loadProjectList();
   if (currentProjectId) {
     loadSegments();
+    loadSegmentListSidebar();
   }
 };
