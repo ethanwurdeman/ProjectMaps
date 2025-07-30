@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -48,11 +47,10 @@
       display: none;
     }
 
-    /* COLLAPSE BUTTON (OUTSIDE SIDEBAR) */
     #collapseBtn {
       position: absolute;
       top: 50%;
-      left: 330px; /* Same as sidebar width */
+      left: 330px;
       transform: translateY(-50%);
       z-index: 99;
       padding: 8px 12px;
@@ -78,34 +76,43 @@
       min-width: 0;
       z-index: 1;
     }
-    /* Sign Out button styles */
-    #signOutBtn {
-      background:#e53935;
-      color:#fff;
-      padding:8px 14px;
-      border:none;
-      border-radius:4px;
-      cursor:pointer;
-      font-weight:bold;
+
+    /* Floating control buttons */
+    .floating-controls {
+      position: fixed;
+      bottom: 18px;
+      right: 18px;
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: flex-end;
     }
-    #signOutBtn:hover {
-      background:#b71c1c;
+    .floating-controls button {
+      background: #fff;
+      color: #222;
+      padding: 8px 16px;
+      border: 1px solid #aaa;
+      border-radius: 5px;
+      box-shadow: 0 2px 7px rgba(0,0,0,0.07);
+      cursor: pointer;
+      font-weight: 500;
+      min-width: 40px;
     }
-.signout-container {
-  position: fixed;
-  bottom: 18px;
-  right: 24px;
-  z-index: 2000;
+    .floating-controls button#signOutBtn {
+      background: #e53935;
+      color: #fff;
+      border: none;
+    }
+    .floating-controls button#signOutBtn:hover {
+      background: #ab2b22;
+    }
+    .floating-controls button:hover {
+      background: #f0f0f0;
     }
   </style>
 </head>
 <body>
-  <!-- Sign out button (fixed, top right) -->
-  <div class="signout-container">
-    <button id="signOutBtn">Sign Out</button>
-  </div>
-
-  <!-- Sidebar (left) -->
   <div id="sidebar">
     <div id="sidebarContent">
       <!-- Sidebar Content (Dashboard, Project List, Segments, etc) -->
@@ -131,20 +138,23 @@
       <div id="historyPanel" style="display:none"></div>
     </div>
   </div>
-  <!-- Collapse sidebar button (right of sidebar, NOT inside) -->
   <button id="collapseBtn" onclick="toggleSidebar()" aria-label="Collapse sidebar">&#9664;</button>
-  <!-- Map (fills rest of screen) -->
   <div id="map"></div>
+
+  <!-- Floating controls (sign out, base layers, status filter) -->
+  <div class="floating-controls">
+    <button id="baseLayerBtn" title="Change base layer">🗺️ Base Layer</button>
+    <button id="statusFilterBtn" title="Show/hide segments by status">🎯 Status Filter</button>
+    <button id="signOutBtn">Sign Out</button>
+  </div>
 
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-
   <!-- Main App Logic -->
   <script src="app.js"></script>
   <script>
@@ -154,12 +164,43 @@
       window.currentUser = userDoc.data();
     });
     document.addEventListener("DOMContentLoaded", function() {
+      // Sign Out
       const btn = document.getElementById('signOutBtn');
       if (btn) {
         btn.onclick = function() {
           firebase.auth().signOut().then(() => {
-            window.location = 'index.html'; // Or wherever your login page is
+            window.location = 'index.html';
           });
+        };
+      }
+      // Base Layer button
+      const baseBtn = document.getElementById('baseLayerBtn');
+      let baseIndex = 0;
+      const baseLayers = [
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: '© OSM' }),
+        L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { attribution: '© OpenTopoMap' }),
+        L.tileLayer('https://{s}.tile.stamen.com/toner/{z}/{x}/{y}.png', { attribution: '© Stamen Toner' })
+      ];
+      let activeBase = baseLayers[0];
+      if (window.map) {
+        window.map.eachLayer(l => {
+          if(l instanceof L.TileLayer) window.map.removeLayer(l);
+        });
+        activeBase.addTo(window.map);
+      }
+      if (baseBtn && window.map) {
+        baseBtn.onclick = function() {
+          baseIndex = (baseIndex+1)%baseLayers.length;
+          window.map.removeLayer(activeBase);
+          activeBase = baseLayers[baseIndex];
+          activeBase.addTo(window.map);
+        };
+      }
+      // Status Filter (dummy: implement your logic as needed)
+      const statusBtn = document.getElementById('statusFilterBtn');
+      if(statusBtn) {
+        statusBtn.onclick = function() {
+          alert('Status filter UI coming soon!');
         };
       }
     });
@@ -169,13 +210,12 @@
       var btn = document.getElementById('collapseBtn');
       sidebar.classList.toggle('collapsed');
       if (sidebar.classList.contains('collapsed')) {
-        btn.innerHTML = '&#9654;'; // Arrow right
+        btn.innerHTML = '&#9654;';
         btn.setAttribute('aria-label', 'Expand sidebar');
       } else {
-        btn.innerHTML = '&#9664;'; // Arrow left
+        btn.innerHTML = '&#9664;';
         btn.setAttribute('aria-label', 'Collapse sidebar');
       }
-      // Fix map resize when sidebar changes
       if (window.map) setTimeout(() => { window.map.invalidateSize(); }, 310);
     }
   </script>
