@@ -188,36 +188,51 @@ map.on(L.Draw.Event.CREATED, function (e) {
 
 });
 
-async function loadSegments() {
-  // Remove previous layers
-  Object.values(statusLayers).forEach(layer => layer.clearLayers());
-  if (!currentProjectId) return;
+// Load and render segments for the current project in the sidebar
+async function loadSegmentListSidebar() {
+  const segmentListDiv = document.getElementById("segmentList");
+  if (!currentProjectId) {
+    segmentListDiv.innerHTML = "";
+    return;
+  }
 
-  const snap = await db.collection("segments").where("projectId", "==", currentProjectId).get();
+  const snap = await db.collection("segments")
+    .where("projectId", "==", currentProjectId)
+    .get();
+
+  if (snap.empty) {
+    segmentListDiv.innerHTML = "<em>No segments yet.</em>";
+    return;
+  }
+
+  let html = "<h3>Segments</h3>";
   snap.forEach(doc => {
     const data = doc.data();
-    let geojson = {};
-    try {
-      geojson = JSON.parse(data.geojson);
-    } catch (err) {
-      console.error("Invalid GeoJSON", err, data.geojson);
-      return; // skip this one
-    }
-    if (!geojson.properties) geojson.properties = {}; // Clean GeoJSON
-    const layer = L.geoJSON(geojson, {
-      style: {
-        color: data.status === "Located" ? "green" :
-               data.status === "In Progress" ? "orange" : "red",
-        weight: 4
-      }
-    }).addTo(statusLayers[data.status]);
-    layer.bindPopup(`
-      <strong>Ticket:</strong> ${data.ticketNumber}<br/>
-      <strong>Location:</strong> ${data.location}<br/>
-      <strong>Status:</strong> ${data.status}
-    `);
+    html += `
+      <div class="segment-item" style="border:1px solid #ddd; border-radius:4px; padding:6px; margin-bottom:5px;">
+        <div><strong>Ticket:</strong> ${data.ticketNumber}</div>
+        <div><strong>Location:</strong> ${data.location}</div>
+        <div>
+          <strong>Status:</strong>
+          <select onchange="window.updateSegmentStatus('${doc.id}', this.value)">
+            <option value="Not Located" ${data.status === "Not Located" ? "selected" : ""}>Not Located</option>
+            <option value="In Progress" ${data.status === "In Progress" ? "selected" : ""}>In Progress</option>
+            <option value="Located" ${data.status === "Located" ? "selected" : ""}>Located</option>
+          </select>
+        </div>
+      </div>
+    `;
   });
+  segmentListDiv.innerHTML = html;
 }
+
+// Function to update status
+window.updateSegmentStatus = async function(segmentId, newStatus) {
+  await db.collection("segments").doc(segmentId).update({ status: newStatus });
+  loadSegments();
+  loadSegmentListSidebar();
+};
+
 
 // ==== Initial Load ====
 window.onload = function() {
