@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Global Segment Field Config</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body { font-family: Arial, sans-serif; background: #f8f8f8; padding: 32px; }
+    h2 { margin-top: 0; }
+    .field-row { background: #fff; padding: 12px 8px; margin-bottom: 10px; border-radius: 6px; display: flex; align-items: center; gap: 10px; border: 1px solid #eee; }
+    .field-row input[type=text], .field-row select { min-width: 90px; }
+    label { font-size: 0.92em; }
+    .delbtn { color: #b00; font-weight: bold; border: none; background: transparent; cursor: pointer; font-size: 1.2em; }
+    #addRow { margin-top: 16px; }
+    #saveConfig { margin-top: 24px; font-size: 1.2em; padding: 10px 25px; }
+    #info { color: #1976d2; font-size: 0.95em; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <h2>⚙️ Global Segment Fields Config</h2>
+  <div id="info"></div>
+  <form id="fieldsForm"></form>
+  <button id="addRow" type="button">➕ Add Field</button>
+  <br>
+  <button id="saveConfig" type="button">💾 Save Config</button>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script>
+    // --- Setup ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
+      authDomain: "projectmap-35a69.firebaseapp.com",
+      projectId: "projectmap-35a69",
+      storageBucket: "projectmap-35a69.appspot.com",
+      messagingSenderId: "676439686152",
+      appId: "1:676439686152:web:0fdc2d8aab41aec67fa5bd"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // --- Globals ---
+    let configFields = [];
+    const info = document.getElementById("info");
+    const CONFIG_DOC = db.collection("global").doc("config");
+
+    // --- Utility ---
+    function renderFields() {
+      const form = document.getElementById("fieldsForm");
+      form.innerHTML = "";
+      configFields.forEach((field, idx) => {
+        let opts = "";
+        if (field.type === "select") {
+          opts = `<input type="text" class="optionsInput" placeholder="option1,option2..." value="${(field.options||[]).join(",")}" />`;
+        }
+        form.innerHTML += `
+          <div class="field-row" data-idx="${idx}">
+            <input type="text" class="keyInput" placeholder="key" value="${field.key || ""}" size="10" required/>
+            <input type="text" class="labelInput" placeholder="Label" value="${field.label || ""}" required/>
+            <select class="typeInput">
+              <option value="text" ${field.type==="text"?"selected":""}>Text</option>
+              <option value="date" ${field.type==="date"?"selected":""}>Date</option>
+              <option value="select" ${field.type==="select"?"selected":""}>Select</option>
+            </select>
+            <label>Show <input type="checkbox" class="showInput" ${field.show?"checked":""}></label>
+            <label>Required <input type="checkbox" class="requiredInput" ${field.required?"checked":""}></label>
+            ${opts}
+            <button class="delbtn" type="button" title="Delete field">×</button>
+          </div>
+        `;
+      });
+    }
+
+    function readFieldsFromUI() {
+      const rows = Array.from(document.querySelectorAll(".field-row"));
+      return rows.map(row => {
+        const idx = +row.dataset.idx;
+        const key = row.querySelector('.keyInput').value.trim();
+        const label = row.querySelector('.labelInput').value.trim();
+        const type = row.querySelector('.typeInput').value;
+        const show = row.querySelector('.showInput').checked;
+        const required = row.querySelector('.requiredInput').checked;
+        let options = [];
+        if (type === "select") {
+          options = row.querySelector('.optionsInput').value.split(',').map(s=>s.trim()).filter(Boolean);
+        }
+        return { key, label, type, show, required, ...(type==="select"?{options}:{} )};
+      });
+    }
+
+    function addRow(fld={key:"",label:"",type:"text",show:true,required:false}) {
+      configFields.push(fld);
+      renderFields();
+    }
+
+    // --- Load config ---
+    async function loadConfig() {
+      info.textContent = "Loading config…";
+      const snap = await CONFIG_DOC.get();
+      if (snap.exists && snap.data().segmentForm) {
+        configFields = snap.data().segmentForm.fields || [];
+        info.textContent = "Loaded global config.";
+      } else {
+        // Default fields
+        configFields = [
+          { key:"ticketNumber", type:"text", label:"Ticket #", required:true, show:true },
+          { key:"location", type:"text", label:"Location", required:true, show:true },
+          { key:"status", type:"select", label:"Status", options:["Not Located","In Progress","Located"], required:true, show:true },
+          { key:"workDate", type:"date", label:"Work Date", show:true },
+          { key:"locateDate", type:"date", label:"Locate Date", show:true },
+          { key:"category", type:"select", label:"Category", options:["HDD","Plow","Missile"], show:true }
+        ];
+        info.textContent = "Loaded default config.";
+      }
+      renderFields();
+    }
+
+    // --- Save config ---
+    async function saveConfig() {
+      configFields = readFieldsFromUI();
+      if (!configFields.length) return alert("Must have at least one field.");
+      const keys = configFields.map(f=>f.key);
+      if (new Set(keys).size !== keys.length) return alert("Duplicate field keys.");
+      await CONFIG_DOC.set({ segmentForm: { fields: configFields } }, { merge: true });
+      info.textContent = "✅ Saved!";
+      setTimeout(()=>info.textContent="", 2000);
+    }
+
+    // --- Events ---
+    document.getElementById("addRow").onclick = () => { addRow(); };
+    document.getElementById("saveConfig").onclick = saveConfig;
+    document.getElementById("fieldsForm").onclick = function(e) {
+      if (e.target.classList.contains("delbtn")) {
+        const idx = +e.target.closest(".field-row").dataset.idx;
+        configFields.splice(idx, 1);
+        renderFields();
+      }
+    };
+    document.getElementById("fieldsForm").oninput = function(e) {
+      configFields = readFieldsFromUI();
+    };
+
+    // --- Init ---
+    loadConfig();
+  </script>
+</body>
+</html>
