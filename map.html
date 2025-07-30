@@ -11,12 +11,15 @@
 
   <style>
     body, html {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      display: flex;
-      font-family: Arial, sans-serif;
-    }
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100vw;     /* Make sure body fills full width */
+  display: flex;
+  flex-direction: row;  /* <-- Explicitly set to row! */
+  font-family: Arial, sans-serif;
+  }
+
     #sidebar {
       width: 330px;
       background: #f4f4f4;
@@ -26,10 +29,11 @@
       box-sizing: border-box;
     }
     #map {
-      flex: 1;
-      min-height: 500px;
-      height: 100%;
-    }
+  flex: 1;
+  height: 100vh;    /* Use 100vh for viewport height */
+  min-width: 0;     /* This helps prevent flexbox issues */
+}
+
     .project-item {
       padding: 8px;
       margin-bottom: 8px;
