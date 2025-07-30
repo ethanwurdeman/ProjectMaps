@@ -10,16 +10,18 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
 
   <style>
-    body, html {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  width: 100vw;     /* Make sure body fills full width */
-  display: flex;
-  flex-direction: row;  /* <-- Explicitly set to row! */
-  font-family: Arial, sans-serif;
-  }
-
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100vw;
+      font-family: Arial, sans-serif;
+    }
+    body {
+      display: flex;
+      flex-direction: row;
+      height: 100vh;
+    }
     #sidebar {
       width: 330px;
       background: #f4f4f4;
@@ -27,13 +29,13 @@
       overflow-y: auto;
       border-right: 1px solid #ccc;
       box-sizing: border-box;
+      height: 100vh;
     }
     #map {
-  flex: 1;
-  height: 100vh;    /* Use 100vh for viewport height */
-  min-width: 0;     /* This helps prevent flexbox issues */
-}
-
+      flex: 1;
+      height: 100vh;
+      min-width: 0;
+    }
     .project-item {
       padding: 8px;
       margin-bottom: 8px;
@@ -56,6 +58,7 @@
     #currentProjectName {
       font-weight: bold;
       flex: 1;
+      font-size: 1.1em;
     }
     .segment-item {
       background: #fff;
@@ -63,6 +66,29 @@
       border-radius: 4px;
       margin-bottom: 8px;
       padding: 8px;
+    }
+    #messagesPanel, #historyPanel {
+      background: #fff;
+      border: 1px solid #bbb;
+      border-radius: 4px;
+      margin-top: 10px;
+      padding: 10px;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+    .panel-close-btn {
+      float: right;
+      margin-top: -2px;
+      margin-right: 0;
+      border: none;
+      background: none;
+      font-size: 1.1em;
+      color: #888;
+      cursor: pointer;
+    }
+    @media (max-width: 900px) {
+      #sidebar { width: 100vw; min-width: 0; }
+      #map { display: none; }
     }
   </style>
 </head>
@@ -81,10 +107,15 @@
     <!-- Project Header: Only visible when a project is open -->
     <div id="projectHeader" style="display: none;">
       <span id="currentProjectName"></span>
+      <button id="messagesBtn" onclick="openMessages()">💬</button>
+      <button id="historyBtn" onclick="openHistory()">📜</button>
       <button onclick="returnToProjectList()" title="Back">&larr;</button>
     </div>
     <!-- Segment list for open project -->
     <div id="segmentList"></div>
+    <!-- Panels (hidden unless active) -->
+    <div id="messagesPanel" style="display:none"></div>
+    <div id="historyPanel" style="display:none"></div>
   </div>
   <div id="map"></div>
 
