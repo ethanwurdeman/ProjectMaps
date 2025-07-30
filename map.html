@@ -20,6 +20,7 @@
       height: 100vh;
       width: 100vw;
       overflow: hidden;
+      position: relative;
     }
     #sidebar {
       width: 330px;
@@ -30,6 +31,7 @@
       box-sizing: border-box;
       height: 100vh;
       position: relative;
+      z-index: 2;
       transition: width 0.3s;
     }
     #sidebar.collapsed {
@@ -44,35 +46,44 @@
     #sidebar.collapsed #sidebarContent {
       display: none;
     }
+
+    /* COLLAPSE BUTTON (OUTSIDE SIDEBAR) */
     #collapseBtn {
-  position: absolute;
-  top: 50%;
-  right: -20px;         /* Instead of left: 100% */
-  left: auto;           /* Remove left */
-  transform: translateY(-50%);
-  z-index: 999;
-  padding: 6px 8px;
-  background: #ffeeba;
-  border: 1px solid #ccc;
-  border-radius: 0 4px 4px 0;
-  box-shadow: 1px 2px 4px rgba(0,0,0,0.10);
-  font-size: 1.2em;
-  cursor: pointer;
-}
+      position: absolute;
+      top: 50%;
+      left: 330px; /* Same as sidebar width */
+      transform: translateY(-50%);
+      z-index: 99;
+      padding: 8px 12px;
+      background: #ffeeba;
+      border: 1px solid #ccc;
+      border-radius: 0 4px 4px 0;
+      box-shadow: 1px 2px 4px rgba(0,0,0,0.10);
+      font-size: 1.2em;
+      cursor: pointer;
+      transition: left 0.3s, border-radius 0.3s;
+      outline: none;
+    }
+    /* Move button to the far left when sidebar is collapsed */
+    #sidebar.collapsed + #collapseBtn {
+      left: 0;
+      border-radius: 4px 0 0 4px;
+    }
 
     #collapseBtn:hover {
       background: #f0f0f0;
     }
+
     #map {
       flex: 1;
       height: 100vh;
       min-width: 0;
+      z-index: 1;
     }
   </style>
 </head>
 <body>
   <div id="sidebar">
-    <button id="collapseBtn" onclick="toggleSidebar()">&#9664;</button>
     <div id="sidebarContent">
       <!-- Sidebar Content (Dashboard, Project List, Segments, etc) -->
       <div id="projectMenu">
@@ -96,6 +107,7 @@
       <div id="historyPanel" style="display:none"></div>
     </div>
   </div>
+  <button id="collapseBtn" onclick="toggleSidebar()" aria-label="Collapse sidebar">&#9664;</button>
   <div id="map"></div>
 
   <!-- Firebase SDKs -->
@@ -117,8 +129,10 @@
       sidebar.classList.toggle('collapsed');
       if (sidebar.classList.contains('collapsed')) {
         btn.innerHTML = '&#9654;'; // Arrow right
+        btn.setAttribute('aria-label', 'Expand sidebar');
       } else {
         btn.innerHTML = '&#9664;'; // Arrow left
+        btn.setAttribute('aria-label', 'Collapse sidebar');
       }
       // Fix map resize when sidebar changes
       if (window.map) setTimeout(() => { window.map.invalidateSize(); }, 310);
