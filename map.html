@@ -19,6 +19,7 @@
       flex-direction: row;
       height: 100vh;
       width: 100vw;
+      overflow: hidden;
     }
     #sidebar {
       width: 330px;
@@ -35,7 +36,7 @@
       width: 0 !important;
       min-width: 0 !important;
       padding: 0 !important;
-      overflow: hidden;
+      overflow: hidden !important;
     }
     #sidebarContent {
       display: block;
@@ -71,7 +72,7 @@
   <div id="sidebar">
     <button id="collapseBtn" onclick="toggleSidebar()">&#9664;</button>
     <div id="sidebarContent">
-      <!-- Your sidebar UI goes here, e.g. project menu, segment list, etc. -->
+      <!-- Sidebar Content (Dashboard, Project List, Segments, etc) -->
       <div id="projectMenu">
         <h2>🗂 Projects</h2>
         <div>
@@ -81,16 +82,33 @@
         </div>
         <div id="projectList"><p>Loading...</p></div>
       </div>
-      <!-- (etc...) -->
+      <div id="projectHeader" style="display: none;">
+        <span id="currentProjectName"></span>
+        <button id="segmentsBtn" onclick="showSegments()" title="Segments">🗂️</button>
+        <button id="messagesBtn" onclick="openMessages()">💬</button>
+        <button id="historyBtn" onclick="openHistory()">📜</button>
+        <button onclick="returnToProjectList()" title="Back">&larr;</button>
+      </div>
+      <div id="segmentList"></div>
+      <div id="messagesPanel" style="display:none"></div>
+      <div id="historyPanel" style="display:none"></div>
     </div>
   </div>
   <div id="map"></div>
 
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-  <!-- Your app.js and Firebase scripts go here -->
+
+  <!-- Main App Logic -->
+  <script src="app.js"></script>
   <script>
+    // Collapse/Expand Sidebar Button Logic
     function toggleSidebar() {
       var sidebar = document.getElementById('sidebar');
       var btn = document.getElementById('collapseBtn');
@@ -100,7 +118,7 @@
       } else {
         btn.innerHTML = '&#9664;'; // Arrow left
       }
-      // After collapsing/expanding, force map to resize
+      // Fix map resize when sidebar changes
       if (window.map) setTimeout(() => { window.map.invalidateSize(); }, 310);
     }
   </script>
