@@ -158,44 +158,46 @@ map.on(L.Draw.Event.CREATED, function (e) {
   layer.bindPopup(popupHtml).openPopup();
 
   setTimeout(() => {
-    const btn = document.getElementById(uniqueId);
-    if (btn) {
-      btn.onclick = async () => {
-        const ticket = document.getElementById("ticketInput").value;
-        const locationVal = document.getElementById("locationInput").value;
-        const status = document.getElementById("statusInput").value;
+  const btn = document.getElementById(uniqueId);
+  if (btn) {
+    btn.onclick = async () => {
+      const ticket = document.getElementById("ticketInput").value;
+      const locationVal = document.getElementById("locationInput").value;
+      const status = document.getElementById("statusInput").value;
 
-        if (!ticket || !locationVal) {
-          alert("Please fill in ticket and location!");
-          return;
-        }
+      if (!ticket || !locationVal) {
+        alert("Please fill in ticket and location!");
+        return;
+      }
 
-        let geojsonString;
-        try {
-          geojsonString = JSON.stringify(geojson);
-        } catch (err) {
-          alert("GeoJSON could not be stringified!");
-          return;
-        }
+      let geojsonString;
+      try {
+        geojsonString = JSON.stringify(geojson);
+      } catch (err) {
+        alert("GeoJSON could not be stringified!");
+        return;
+      }
 
-        try {
-          await db.collection("segments").add({
-            projectId: currentProjectId,
-            ticketNumber: ticket,
-            location: locationVal,
-            status,
-            geojson: geojsonString,
-            archived: false, // <--- NEW
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-          });
-          alert("✅ Segment saved!");
-          location.reload();
-        } catch (err) {
-          alert("❌ Error: " + err.message);
-        }
-      };
-    }
-  }, 200);
+      try {
+        await db.collection("segments").add({
+          projectId: currentProjectId,
+          ticketNumber: ticket,
+          location: locationVal,
+          status,
+          geojson: geojsonString,
+          archived: false,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        // 👇 Instead of alert + reload, do this:
+        loadSegments();
+        loadSegmentListSidebar();
+        map.closePopup(); // Close the popup after save
+      } catch (err) {
+        alert("❌ Error: " + err.message);
+      }
+    };
+  }
+}, 200);
 });
 
 function loadSegments() {
@@ -204,9 +206,10 @@ function loadSegments() {
 
   db.collection("segments")
     .where("projectId", "==", currentProjectId)
-    .where("archived", "==", false) // Only show active on map!
+    .where("archived", "==", false)
     .get()
     .then(snap => {
+      const layersForBounds = [];
       snap.forEach(doc => {
         const data = doc.data();
         let geojson = {};
@@ -229,7 +232,24 @@ function loadSegments() {
           <strong>Location:</strong> ${data.location}<br/>
           <strong>Status:</strong> ${data.status}
         `);
+        // Collect for bounds
+        layersForBounds.push(layer);
       });
+
+      // 🟢 Auto-zoom if there are segments
+      if (layersForBounds.length > 0) {
+        // Combine all bounds
+        let bounds = null;
+        layersForBounds.forEach(l => {
+          try {
+            const lb = l.getBounds();
+            bounds = bounds ? bounds.extend(lb) : lb;
+          } catch { /* skip if marker */ }
+        });
+        if (bounds && bounds.isValid()) {
+          map.fitBounds(bounds.pad(0.2)); // Slight padding for visual comfort
+        }
+      }
     });
 }
 
