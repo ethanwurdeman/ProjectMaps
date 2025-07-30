@@ -141,7 +141,7 @@ async function loadProjectList() {
 const urlParams = new URLSearchParams(window.location.search);
 currentProjectId = urlParams.get("projectId");
 
-window.map = L.map("map").setView([41.865, -103.667], 8);
+window.map = L.map("map").setView([41.865, -103.667], 5);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(window.map);
 
 const drawnItems = new L.FeatureGroup().addTo(window.map);
