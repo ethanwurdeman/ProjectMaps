@@ -1,39 +1,110 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Welcome to ProjectMap</title>
+  <title>Login or Create Account – ProjectMap</title>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      background: #f0f0f0;
-      padding: 100px;
-    }
-    h1 {
-      font-size: 2em;
-    }
-    p {
-      margin: 20px 0;
-    }
-    button {
-      padding: 15px 25px;
-      font-size: 1em;
-      background-color: #1976d2;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #135ba1;
-    }
+    body { font-family: Arial,sans-serif; background: #f4f4f4; display: flex; align-items: center; justify-content: center; height: 100vh; }
+    .container { background: #fff; padding: 32px 24px; border-radius: 8px; box-shadow: 0 0 14px #bbb; width: 340px; }
+    h2 { margin-top: 0; }
+    input { width: 100%; padding: 10px; margin: 8px 0; }
+    button { width: 100%; padding: 10px; background: #1976d2; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;}
+    #error { color: red; margin: 8px 0; font-size: 0.97em; }
+    .toggle-link { color: #1976d2; cursor: pointer; font-size: 0.97em; margin-top: 10px; display: block; text-align: center; }
   </style>
 </head>
 <body>
-  <h1>🚧 Welcome to ProjectMap</h1>
-  <p>Bridging the communication between locators and excavators to avoid delay's for excavators and unnecessary work for locators while ensuring no utilities are damaged!</p>
-  <button onclick="window.location.href='map.html'">Sign In</button>
+  <div class="container">
+    <div id="loginForm">
+      <h2>🔒 Login</h2>
+      <input type="email" id="loginEmail" placeholder="Email" required />
+      <input type="password" id="loginPassword" placeholder="Password" required />
+      <button id="signInBtn">Sign In</button>
+      <div id="error"></div>
+      <span class="toggle-link" onclick="toggleForms()">Need an account? Create one</span>
+    </div>
+    <div id="signupForm" style="display:none;">
+      <h2>📝 Create Account</h2>
+      <input type="text" id="signupName" placeholder="Full Name" required />
+      <input type="tel" id="signupPhone" placeholder="Phone Number" required />
+      <input type="text" id="signupCompany" placeholder="Company Name" required />
+      <input type="email" id="signupEmail" placeholder="Email Address" required />
+      <input type="password" id="signupPassword" placeholder="Password" required />
+      <input type="text" id="signupPasswordHint" placeholder="Password Hint" required />
+      <button id="signupBtn">Create Account</button>
+      <div id="error2"></div>
+      <span class="toggle-link" onclick="toggleForms()">Already have an account? Login</span>
+    </div>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script>
+    // Toggle Forms
+    function toggleForms() {
+      document.getElementById('loginForm').style.display =
+        document.getElementById('loginForm').style.display === 'none' ? '' : 'none';
+      document.getElementById('signupForm').style.display =
+        document.getElementById('signupForm').style.display === 'none' ? '' : 'none';
+    }
+    // Firebase config (same as before)
+    const firebaseConfig = {
+      apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
+      authDomain: "projectmap-35a69.firebaseapp.com",
+      projectId: "projectmap-35a69",
+      storageBucket: "projectmap-35a69.appspot.com",
+      messagingSenderId: "676439686152",
+      appId: "1:676439686152:web:0fdc2d8aab41aec67fa5bd"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // Login Handler
+    document.getElementById('signInBtn').onclick = async function() {
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const errorDiv = document.getElementById('error');
+      errorDiv.textContent = "";
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+        window.location.href = "dashboard.html";
+      } catch (err) {
+        errorDiv.textContent = err.message;
+      }
+    };
+
+    // Signup Handler
+    document.getElementById('signupBtn').onclick = async function() {
+      const name = document.getElementById('signupName').value.trim();
+      const phone = document.getElementById('signupPhone').value.trim();
+      const company = document.getElementById('signupCompany').value.trim();
+      const email = document.getElementById('signupEmail').value.trim();
+      const password = document.getElementById('signupPassword').value;
+      const passwordHint = document.getElementById('signupPasswordHint').value.trim();
+      const errorDiv = document.getElementById('error2');
+      errorDiv.textContent = "";
+      if (!name || !phone || !company || !email || !password || !passwordHint) {
+        errorDiv.textContent = "Please fill all fields.";
+        return;
+      }
+      try {
+        const cred = await auth.createUserWithEmailAndPassword(email, password);
+        await db.collection('users').doc(cred.user.uid).set({
+          name, phone, company, email,
+          role: "subcontractor",
+          assignedProjects: [],
+          passwordHint
+        });
+        alert("Account created! You may now log in.");
+        toggleForms();
+      } catch (err) {
+        errorDiv.textContent = err.message;
+      }
+    };
+  </script>
 </body>
 </html>
