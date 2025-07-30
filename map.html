@@ -106,11 +106,12 @@
     </div>
     <!-- Project Header: Only visible when a project is open -->
     <div id="projectHeader" style="display: none;">
-      <span id="currentProjectName"></span>
-      <button id="messagesBtn" onclick="openMessages()">💬</button>
-      <button id="historyBtn" onclick="openHistory()">📜</button>
-      <button onclick="returnToProjectList()" title="Back">&larr;</button>
-    </div>
+  <span id="currentProjectName"></span>
+  <button id="segmentsBtn" onclick="showSegments()" title="Segments">🗂️</button>
+  <button id="messagesBtn" onclick="openMessages()">💬</button>
+  <button id="historyBtn" onclick="openHistory()">📜</button>
+  <button onclick="returnToProjectList()" title="Back">&larr;</button>
+</div>
     <!-- Segment list for open project -->
     <div id="segmentList"></div>
     <!-- Panels (hidden unless active) -->
