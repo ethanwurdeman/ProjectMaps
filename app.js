@@ -81,9 +81,7 @@ window.switchProject = function(projectId) {
   closePanels();
   currentProjectId = projectId;
   document.getElementById('projectMenu').style.display = 'none';
-  document.getElementById('backBar').style.display = '';
-  document.getElementById('messagesBtn').disabled = false;
-  document.getElementById('historyBtn').disabled = false;
+  document.getElementById('projectHeader').style.display = 'flex';
   db.collection("projects").doc(projectId).get().then(doc => {
     if (doc.exists) {
       document.getElementById("currentProjectName").textContent = doc.data().name;
@@ -99,11 +97,9 @@ window.returnToProjectList = function() {
   closePanels();
   currentProjectId = null;
   document.getElementById('projectMenu').style.display = '';
-  document.getElementById('backBar').style.display = 'none';
+  document.getElementById('projectHeader').style.display = 'none';
   document.getElementById('currentProjectName').textContent = "";
   document.getElementById('segmentList').innerHTML = '';
-  document.getElementById('messagesBtn').disabled = true;
-  document.getElementById('historyBtn').disabled = true;
   Object.values(statusLayers).forEach(layer => layer.clearLayers());
   loadProjectList();
 };
@@ -454,15 +450,13 @@ window.onload = async function() {
   await loadGlobalConfig();
   const urlParams = new URLSearchParams(window.location.search);
   const urlProjectId = urlParams.get("projectId");
-  document.getElementById('messagesBtn').disabled = true;
-  document.getElementById('historyBtn').disabled = true;
   if (urlProjectId) {
     switchProject(urlProjectId);
     document.getElementById('projectMenu').style.display = 'none';
-    document.getElementById('backBar').style.display = '';
+    document.getElementById('projectHeader').style.display = 'flex';
   } else {
     document.getElementById('projectMenu').style.display = '';
-    document.getElementById('backBar').style.display = 'none';
+    document.getElementById('projectHeader').style.display = 'none';
     loadProjectList();
   }
 };
