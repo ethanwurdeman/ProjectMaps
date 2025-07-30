@@ -461,4 +461,8 @@ window.onload = async function() {
     document.getElementById('projectMenu').style.display = 'none';
     document.getElementById('backBar').style.display = '';
   } else {
-    document.getElementById('
+    document.getElementById('projectMenu').style.display = '';
+    document.getElementById('backBar').style.display = 'none';
+    loadProjectList();
+  }
+};
