@@ -110,9 +110,10 @@
   </style>
 </head>
 <body>
-  <div id="sidebar">
-    <!-- Project List Menu (Dashboard mode) -->
-    <div id="projectMenu">
+      <button id="collapseBtn" onclick="toggleSidebar()">&#9664;</button>
+    <div id="sidebarContent">
+      <!-- Project List Menu (Dashboard mode) -->
+      <div id="projectMenu">
       <h2>🗂 Projects</h2>
       <div>
         <input type="text" id="newProjectName" placeholder="New Project Name" style="width: 100%; margin-bottom: 10px;" />
@@ -134,6 +135,7 @@
     <!-- Panels (hidden unless active) -->
     <div id="messagesPanel" style="display:none"></div>
     <div id="historyPanel" style="display:none"></div>
+      </div> <!-- sidebarContent -->
   </div>
   <div id="map"></div>
 
