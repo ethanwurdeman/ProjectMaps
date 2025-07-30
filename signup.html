@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sign Up – ProjectMap</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; display: flex; align-items: center; justify-content: center; height: 100vh; }
+    .signup-box { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px #ccc; width: 320px; }
+    input { width: 100%; padding: 10px; margin: 8px 0; }
+    button { width: 100%; padding: 10px; background: #1976d2; color: white; border: none; cursor: pointer; font-weight: bold; }
+    #error { color: red; margin-top: 10px; font-size: 0.95em; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="signup-box">
+    <h2>📝 Create Account</h2>
+    <input type="text" id="name" placeholder="Full Name" required>
+    <input type="tel" id="phone" placeholder="Phone Number" required>
+    <input type="text" id="company" placeholder="Company Name" required>
+    <input type="email" id="email" placeholder="Email Address" required>
+    <input type="password" id="password" placeholder="Password" required>
+    <input type="text" id="passwordHint" placeholder="Password Hint" required>
+    <button id="signupBtn">Sign Up</button>
+    <div id="error"></div>
+    <p style="font-size:0.9em;margin-top:14px;"><a href="login.html">Already have an account? Log in</a></p>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
+      authDomain: "projectmap-35a69.firebaseapp.com",
+      projectId: "projectmap-35a69",
+      storageBucket: "projectmap-35a69.appspot.com",
+      messagingSenderId: "676439686152",
+      appId: "1:676439686152:web:0fdc2d8aab41aec67fa5bd"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    document.getElementById('signupBtn').onclick = async function() {
+      const name = document.getElementById('name').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const company = document.getElementById('company').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const passwordHint = document.getElementById('passwordHint').value.trim();
+      const errorDiv = document.getElementById('error');
+
+      if (!name || !phone || !company || !email || !password || !passwordHint) {
+        errorDiv.textContent = "Please fill all fields.";
+        return;
+      }
+      try {
+        const cred = await auth.createUserWithEmailAndPassword(email, password);
+        // Default: new accounts are 'subcontractor' (lowest access). Admin can promote later.
+        await db.collection('users').doc(cred.user.uid).set({
+          name, phone, company, email,
+          role: "subcontractor",
+          assignedProjects: [],
+          passwordHint
+        });
+        window.location.href = "login.html";
+      } catch (err) {
+        errorDiv.textContent = err.message;
+      }
+    };
+  </script>
+</body>
+</html>
