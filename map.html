@@ -19,9 +19,9 @@
       font-family: Arial, sans-serif;
     }
     #sidebar {
-      width: 300px;
+      width: 325px;
       background: #f4f4f4;
-      padding: 15px;
+      padding: 18px 12px;
       overflow-y: auto;
       border-right: 1px solid #ccc;
       box-sizing: border-box;
@@ -29,7 +29,7 @@
     #map {
       flex: 1;
       height: 100vh;
-      min-width: 0; /* Prevents layout bug in some browsers */
+      min-width: 0;
     }
     .project-item {
       padding: 8px;
@@ -37,29 +37,42 @@
       background: white;
       border: 1px solid #ddd;
       border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
     }
-    .project-item button { margin-right: 6px; }
+    .project-item button { margin-right: 3px; }
     h2 { margin-top: 0; }
-    .status {
-      font-size: 0.85em;
-      color: #666;
+    #segmentList h3 {
+      margin-bottom: 8px;
+      margin-top: 18px;
+      font-size: 1.1em;
+    }
+    .segment-item {
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 6px;
+      margin-bottom: 7px;
+      background: #fff;
+    }
+    .segment-item select {
+      margin-top: 3px;
     }
   </style>
 </head>
 <body>
   <div id="sidebar">
-  <h2>🗂 Projects</h2>
-  <div>
-    <input type="text" id="newProjectName" placeholder="New Project Name" style="width: 100%; margin-bottom: 10px;" />
-    <button onclick="createProject()">➕ Create</button>
-    <button onclick="toggleArchived()">
-      🔁 Toggle Archived
-    </button>
+    <h2>🗂 Projects</h2>
+    <div>
+      <input type="text" id="newProjectName" placeholder="New Project Name" style="width: 100%; margin-bottom: 10px;" />
+      <button onclick="createProject()">➕ Create</button>
+      <button onclick="toggleArchived()">
+        🔁 Toggle Archived
+      </button>
+    </div>
+    <div id="projectList"><p>Loading...</p></div>
+    <div id="segmentList"></div>
   </div>
-  <div id="projectList"><p>Loading...</p></div>
-  <div id="segmentList"></div>
-</div>
-
   <div id="map"></div>
 
   <!-- Firebase SDKs -->
