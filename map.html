@@ -122,6 +122,10 @@
   <!-- Main App Logic -->
   <script src="app.js"></script>
   <script>
+    firebase.auth().onAuthStateChanged(user => {
+  if (!user) window.location.href = 'login.html';
+});
+
     // Collapse/Expand Sidebar Button Logic
     function toggleSidebar() {
       var sidebar = document.getElementById('sidebar');
