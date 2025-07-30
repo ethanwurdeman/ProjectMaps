@@ -34,8 +34,16 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script>
-    const firebaseConfig = {/* your config */};
-    firebase.initializeApp(firebaseConfig);
+    const firebaseConfig = {
+  apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
+  authDomain: "projectmap-35a69.firebaseapp.com",
+  projectId: "projectmap-35a69", // <---- THIS MUST BE PRESENT!
+  storageBucket: "projectmap-35a69.appspot.com",
+  messagingSenderId: "676439686152",
+  appId: "1:676439686152:web:0fdc2d8aab41aec67fa5bd"
+};
+firebase.initializeApp(firebaseConfig);
+
     const db = firebase.firestore();
     let users = [];
     // You could check for admin here and redirect if not
