@@ -25,11 +25,13 @@
       overflow-y: auto;
       border-right: 1px solid #ccc;
       box-sizing: border-box;
+      transition: all 0.2s;
     }
     #map {
       flex: 1;
       height: 100vh;
       min-width: 0;
+      transition: all 0.2s;
     }
     .project-item {
       padding: 8px;
@@ -74,9 +76,26 @@
       font-weight: bold;
       vertical-align: middle;
     }
+    #sidebarToggle {
+      position: absolute;
+      z-index: 9999;
+      left: 10px;
+      top: 14px;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 1.2em;
+      transition: left 0.2s;
+    }
   </style>
 </head>
 <body>
+  <!-- Sidebar Toggle Button -->
+  <button id="sidebarToggle" title="Toggle sidebar">≡</button>
+
   <div id="sidebar">
     <!-- Back button and project name bar, hidden until a project is open -->
     <div id="backBar" style="display:none;">
@@ -109,5 +128,31 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
   <!-- App Logic -->
   <script src="app.js"></script>
+  <script>
+    // Sidebar collapse/expand logic
+    document.addEventListener("DOMContentLoaded", function() {
+      const sidebar = document.getElementById('sidebar');
+      const mapDiv = document.getElementById('map');
+      const toggleBtn = document.getElementById('sidebarToggle');
+      let collapsed = false;
+      toggleBtn.onclick = function() {
+        collapsed = !collapsed;
+        if (collapsed) {
+          sidebar.style.display = 'none';
+          mapDiv.style.marginLeft = '0';
+          toggleBtn.innerHTML = '→';
+          toggleBtn.title = "Show sidebar";
+        } else {
+          sidebar.style.display = '';
+          mapDiv.style.marginLeft = '';
+          toggleBtn.innerHTML = '≡';
+          toggleBtn.title = "Hide sidebar";
+        }
+        setTimeout(() => { 
+          if (window.map && window.map.invalidateSize) window.map.invalidateSize();
+        }, 300);
+      };
+    });
+  </script>
 </body>
 </html>
