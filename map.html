@@ -4,11 +4,8 @@
   <title>Project Map</title>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
-
   <style>
     html, body {
       margin: 0;
@@ -21,6 +18,7 @@
       display: flex;
       flex-direction: row;
       height: 100vh;
+      width: 100vw;
     }
     #sidebar {
       width: 330px;
@@ -33,112 +31,78 @@
       position: relative;
       transition: width 0.3s;
     }
-    #collapseBtn {
-      position: absolute;
-      top: 10px;
-      left: 100%;
-      margin-left: 5px;
-      padding: 4px 6px;
-      cursor: pointer;
-    }
     #sidebar.collapsed {
-      width: 0;
-      padding: 0;
+      width: 0 !important;
+      min-width: 0 !important;
+      padding: 0 !important;
+      overflow: hidden;
+    }
+    #sidebarContent {
+      display: block;
     }
     #sidebar.collapsed #sidebarContent {
       display: none;
+    }
+    #collapseBtn {
+      position: absolute;
+      top: 50%;
+      left: 100%;
+      transform: translateY(-50%);
+      z-index: 10;
+      padding: 4px 6px;
+      cursor: pointer;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 4px 0 0 4px;
+      box-shadow: 1px 2px 4px rgba(0,0,0,0.07);
+      transition: background 0.2s;
+    }
+    #collapseBtn:hover {
+      background: #f0f0f0;
     }
     #map {
       flex: 1;
       height: 100vh;
       min-width: 0;
     }
-    .project-item {
-      padding: 8px;
-      margin-bottom: 8px;
-      background: white;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .project-item button {
-      margin-right: 6px;
-    }
-    #projectHeader {
-      display: none;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-@@ -72,64 +89,67 @@
-      border: 1px solid #bbb;
-      border-radius: 4px;
-      margin-top: 10px;
-      padding: 10px;
-      max-height: 320px;
-      overflow-y: auto;
-    }
-    .panel-close-btn {
-      float: right;
-      margin-top: -2px;
-      margin-right: 0;
-      border: none;
-      background: none;
-      font-size: 1.1em;
-      color: #888;
-      cursor: pointer;
-    }
-    @media (max-width: 900px) {
-      #sidebar { width: 100vw; min-width: 0; }
-      #map { display: none; }
-    }
   </style>
 </head>
 <body>
   <div id="sidebar">
-    <!-- Project List Menu (Dashboard mode) -->
-    <div id="projectMenu">
     <button id="collapseBtn" onclick="toggleSidebar()">&#9664;</button>
     <div id="sidebarContent">
-      <!-- Project List Menu (Dashboard mode) -->
+      <!-- Your sidebar UI goes here, e.g. project menu, segment list, etc. -->
       <div id="projectMenu">
-      <h2>🗂 Projects</h2>
-      <div>
-        <input type="text" id="newProjectName" placeholder="New Project Name" style="width: 100%; margin-bottom: 10px;" />
-        <button onclick="createProject()">➕ Create</button>
-        <button id="archiveToggleBtn" onclick="toggleArchive()">View Archived Projects</button>
+        <h2>🗂 Projects</h2>
+        <div>
+          <input type="text" id="newProjectName" placeholder="New Project Name" style="width: 100%; margin-bottom: 10px;" />
+          <button onclick="createProject()">➕ Create</button>
+          <button id="archiveToggleBtn" onclick="toggleArchive()">View Archived Projects</button>
+        </div>
+        <div id="projectList"><p>Loading...</p></div>
       </div>
-      <div id="projectList"><p>Loading...</p></div>
+      <!-- (etc...) -->
     </div>
-    <!-- Project Header: Only visible when a project is open -->
-    <div id="projectHeader" style="display: none;">
-  <span id="currentProjectName"></span>
-  <button id="segmentsBtn" onclick="showSegments()" title="Segments">🗂️</button>
-  <button id="messagesBtn" onclick="openMessages()">💬</button>
-  <button id="historyBtn" onclick="openHistory()">📜</button>
-  <button onclick="returnToProjectList()" title="Back">&larr;</button>
-</div>
-    <!-- Segment list for open project -->
-    <div id="segmentList"></div>
-    <!-- Panels (hidden unless active) -->
-    <div id="messagesPanel" style="display:none"></div>
-    <div id="historyPanel" style="display:none"></div>
-      </div> <!-- sidebarContent -->
   </div>
   <div id="map"></div>
 
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-
-  <!-- Leaflet + Draw -->
+  <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-
-  <!-- App Logic -->
-  <script src="app.js"></script>
+  <!-- Your app.js and Firebase scripts go here -->
+  <script>
+    function toggleSidebar() {
+      var sidebar = document.getElementById('sidebar');
+      var btn = document.getElementById('collapseBtn');
+      sidebar.classList.toggle('collapsed');
+      if (sidebar.classList.contains('collapsed')) {
+        btn.innerHTML = '&#9654;'; // Arrow right
+      } else {
+        btn.innerHTML = '&#9664;'; // Arrow left
+      }
+      // After collapsing/expanding, force map to resize
+      if (window.map) setTimeout(() => { window.map.invalidateSize(); }, 310);
+    }
+  </script>
 </body>
 </html>
