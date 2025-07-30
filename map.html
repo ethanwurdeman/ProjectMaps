@@ -1,47 +1,18 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Project Map</title>
+  <title>Test Map Layout</title>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      width: 100vw;
-      font-family: Arial, sans-serif;
-    }
-    body {
-      display: flex;
-      flex-direction: row;
-      height: 100vh;
-      width: 100vw;
-    }
+    html, body { height: 100%; margin: 0; }
+    body { display: flex; height: 100vh; }
     #sidebar {
       width: 330px;
       background: #f4f4f4;
-      padding: 14px 10px 10px 10px;
-      overflow-y: auto;
       border-right: 1px solid #ccc;
-      box-sizing: border-box;
-      height: 100vh;
       position: relative;
-      transition: width 0.3s;
-    }
-    #sidebar.collapsed {
-      width: 0 !important;
-      min-width: 0 !important;
-      padding: 0 !important;
-      overflow: hidden;
-    }
-    #sidebarContent {
-      display: block;
-    }
-    #sidebar.collapsed #sidebarContent {
-      display: none;
     }
     #collapseBtn {
       position: absolute;
@@ -49,60 +20,24 @@
       left: 100%;
       transform: translateY(-50%);
       z-index: 10;
-      padding: 4px 6px;
-      cursor: pointer;
-      background: #fff;
-      border: 1px solid #ccc;
-      border-radius: 4px 0 0 4px;
-      box-shadow: 1px 2px 4px rgba(0,0,0,0.07);
-      transition: background 0.2s;
     }
-    #collapseBtn:hover {
-      background: #f0f0f0;
-    }
-    #map {
-      flex: 1;
-      height: 100vh;
-      min-width: 0;
-    }
+    #map { flex: 1; height: 100vh; min-width: 0; }
   </style>
 </head>
 <body>
   <div id="sidebar">
-    <button id="collapseBtn" onclick="toggleSidebar()">&#9664;</button>
+    <button id="collapseBtn" onclick="alert('Sidebar button!')">&#9664;</button>
     <div id="sidebarContent">
-      <!-- Your sidebar UI goes here, e.g. project menu, segment list, etc. -->
-      <div id="projectMenu">
-        <h2>🗂 Projects</h2>
-        <div>
-          <input type="text" id="newProjectName" placeholder="New Project Name" style="width: 100%; margin-bottom: 10px;" />
-          <button onclick="createProject()">➕ Create</button>
-          <button id="archiveToggleBtn" onclick="toggleArchive()">View Archived Projects</button>
-        </div>
-        <div id="projectList"><p>Loading...</p></div>
-      </div>
-      <!-- (etc...) -->
+      <h2>Sidebar</h2>
+      <p>This is the sidebar.</p>
     </div>
   </div>
   <div id="map"></div>
-
-  <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-  <!-- Your app.js and Firebase scripts go here -->
   <script>
-    function toggleSidebar() {
-      var sidebar = document.getElementById('sidebar');
-      var btn = document.getElementById('collapseBtn');
-      sidebar.classList.toggle('collapsed');
-      if (sidebar.classList.contains('collapsed')) {
-        btn.innerHTML = '&#9654;'; // Arrow right
-      } else {
-        btn.innerHTML = '&#9664;'; // Arrow left
-      }
-      // After collapsing/expanding, force map to resize
-      if (window.map) setTimeout(() => { window.map.invalidateSize(); }, 310);
-    }
+    var map = L.map('map').setView([41.865, -103.667], 12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+    window.map = map;
   </script>
 </body>
 </html>
