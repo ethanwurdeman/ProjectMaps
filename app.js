@@ -372,6 +372,11 @@ function closePanels() {
   document.getElementById('historyPanel').style.display = 'none';
   document.getElementById('segmentList').style.display = '';
 }
+window.showSegments = function() {
+  document.getElementById('messagesPanel').style.display = 'none';
+  document.getElementById('historyPanel').style.display = 'none';
+  document.getElementById('segmentList').style.display = '';
+};
 
 // Messenger UI
 function renderMessagesPanel() {
