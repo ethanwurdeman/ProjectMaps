@@ -10,29 +10,25 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
 
   <style>
-    html { height: 100%; }
-    body {
+    body, html {
       margin: 0;
       padding: 0;
-      height: 100vh;
+      height: 100%;
       display: flex;
       font-family: Arial, sans-serif;
     }
     #sidebar {
-      width: 340px;
+      width: 330px;
       background: #f4f4f4;
-      padding: 18px 12px;
+      padding: 14px 10px 10px 10px;
       overflow-y: auto;
       border-right: 1px solid #ccc;
       box-sizing: border-box;
-      transition: all 0.2s;
-      position: relative;
     }
     #map {
       flex: 1;
-      height: 100vh;
-      min-width: 0;
-      transition: all 0.2s;
+      min-height: 500px;
+      height: 100%;
     }
     .project-item {
       padding: 8px;
@@ -42,159 +38,49 @@
       border-radius: 4px;
       display: flex;
       align-items: center;
-      gap: 7px;
+      gap: 8px;
     }
-    .project-item button { margin-right: 3px; }
-    h2 { margin-top: 0; }
-    #segmentList h3 {
-      margin-bottom: 8px;
-      margin-top: 18px;
-      font-size: 1.1em;
+    .project-item button {
+      margin-right: 6px;
     }
-    .segment-item {
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      padding: 6px;
-      margin-bottom: 7px;
-      background: #fff;
-    }
-    .segment-item select {
-      margin-top: 3px;
-    }
-    #backBar {
-      margin-bottom: 12px;
-    }
-    #backBar button {
-      font-size: 1.1em;
-      margin-right: 10px;
-      background: #eee;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      cursor: pointer;
+    #projectHeader {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
     }
     #currentProjectName {
-      font-size: 1.2em;
       font-weight: bold;
-      vertical-align: middle;
+      flex: 1;
     }
-    /* Sidebar slider (modern pill style) */
-    #sidebarSlider {
-      position: absolute;
-      left: 0;
-      top: 50%;
-      transform: translateY(-50%);
-      z-index: 10000;
-      width: 32px;
-      height: 60px;
-      background: #eee;
-      border-top-right-radius: 30px;
-      border-bottom-right-radius: 30px;
-      border: 1px solid #ccc;
-      box-shadow: 1px 0 6px rgba(0,0,0,0.08);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: left 0.2s, background 0.2s;
-    }
-    #sidebarSlider.collapsed {
-      left: 0;
-      background: #ddd;
-    }
-    #sliderHandle {
-      width: 18px;
-      height: 36px;
-      background: #bbb;
-      border-radius: 10px;
-      box-shadow: 0 0 2px #999;
-      position: relative;
-    }
-    #sidebarSlider:after {
-      content: '⟨';
-      font-size: 1.6em;
-      color: #888;
-      position: absolute;
-      right: 6px;
-      top: 50%;
-      transform: translateY(-50%);
-      pointer-events: none;
-      transition: content 0.2s;
-    }
-    #sidebarSlider.collapsed:after {
-      content: '⟩';
-      right: 7px;
-    }
-    /* Messages & history panel */
-    #messagesPanel, #historyPanel {
+    .segment-item {
       background: #fff;
-      border: 1px solid #ccc;
-      border-radius: 7px;
-      margin-top: 16px;
-      padding: 10px 8px 8px 8px;
-      min-height: 120px;
-      box-shadow: 0 2px 7px #e0e0e0;
-      display: none;
-    }
-    #chatMessages, #historyLog {
-      max-height: 180px;
-      overflow-y: auto;
-      background: #fafafa;
-      padding: 6px;
       border: 1px solid #eee;
+      border-radius: 4px;
       margin-bottom: 8px;
-    }
-    .panel-close-btn {
-      float: right;
-      font-size: 1.3em;
-      color: #b00;
-      background: transparent;
-      border: none;
-      cursor: pointer;
-      margin-top: -6px;
-    }
-    @media (max-width: 800px) {
-      #sidebar { width: 100vw; max-width: 98vw; }
-      #map { display: none; }
-      #sidebarSlider { display: none; }
+      padding: 8px;
     }
   </style>
 </head>
 <body>
-  <!-- Sidebar Slider Toggle -->
-  <div id="sidebarSlider" title="Toggle sidebar">
-    <div id="sliderHandle"></div>
-  </div>
-
   <div id="sidebar">
-    <!-- Back button and project name bar, hidden until a project is open -->
-    <div id="backBar" style="display:none;">
-      <button onclick="returnToProjectList()">← Back</button>
-      <span id="currentProjectName"></span>
-    </div>
-
-    <!-- Project list/creation menu -->
+    <!-- Project List Menu (Dashboard mode) -->
     <div id="projectMenu">
-      <div style="display: flex; align-items: center; justify-content: space-between;">
-        <h2 style="margin: 0;">🗂 Projects</h2>
-        <div>
-          <button id="messagesBtn" title="Messages" style="font-size:1.4em;vertical-align:middle; margin-right:6px;" onclick="openMessages()" disabled>💬</button>
-          <button id="historyBtn" title="History" style="font-size:1.4em;vertical-align:middle;" onclick="openHistory()" disabled>📜</button>
-        </div>
-      </div>
+      <h2>🗂 Projects</h2>
       <div>
         <input type="text" id="newProjectName" placeholder="New Project Name" style="width: 100%; margin-bottom: 10px;" />
         <button onclick="createProject()">➕ Create</button>
-        <button id="archiveToggleBtn" onclick="toggleArchive()" style="margin-left:7px"></button>
+        <button id="archiveToggleBtn" onclick="toggleArchive()">View Archived Projects</button>
       </div>
       <div id="projectList"><p>Loading...</p></div>
     </div>
-
-    <!-- Segment list for active project -->
+    <!-- Project Header: Only visible when a project is open -->
+    <div id="projectHeader" style="display: none;">
+      <span id="currentProjectName"></span>
+      <button onclick="returnToProjectList()" title="Back">&larr;</button>
+    </div>
+    <!-- Segment list for open project -->
     <div id="segmentList"></div>
-    <!-- Messenger panel (hidden by default) -->
-    <div id="messagesPanel"></div>
-    <!-- History panel (hidden by default) -->
-    <div id="historyPanel"></div>
   </div>
   <div id="map"></div>
 
@@ -202,42 +88,12 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
   <!-- Leaflet + Draw -->
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
   <!-- App Logic -->
   <script src="app.js"></script>
-  <script>
-    // Sidebar slider (centered, modern style)
-    document.addEventListener("DOMContentLoaded", function() {
-      const sidebar = document.getElementById('sidebar');
-      const mapDiv = document.getElementById('map');
-      const slider = document.getElementById('sidebarSlider');
-      let collapsed = false;
-
-      function updateSidebarSlider() {
-        if (collapsed) {
-          sidebar.style.display = 'none';
-          mapDiv.style.marginLeft = '0';
-          slider.classList.add('collapsed');
-        } else {
-          sidebar.style.display = '';
-          mapDiv.style.marginLeft = '';
-          slider.classList.remove('collapsed');
-        }
-        setTimeout(() => { 
-          if (window.map && window.map.invalidateSize) window.map.invalidateSize();
-        }, 300);
-      }
-
-      if (slider) {
-        slider.onclick = function() {
-          collapsed = !collapsed;
-          updateSidebarSlider();
-        };
-        updateSidebarSlider();
-      }
-    });
-  </script>
 </body>
 </html>
