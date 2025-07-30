@@ -141,7 +141,7 @@ window.map.on(L.Draw.Event.CREATED, function (e) {
 
   const uniqueId = `submitSegment_${Date.now()}_${Math.floor(Math.random()*10000)}`;
   const popupHtml = `
-    <div style="min-width:180px">
+    <div style="min-width:200px">
       <strong>Ticket #</strong><br/>
       <input id="ticketInput" style="width:95%" /><br/>
       <strong>Location</strong><br/>
@@ -151,6 +151,16 @@ window.map.on(L.Draw.Event.CREATED, function (e) {
         <option value="Not Located">Not Located</option>
         <option value="In Progress">In Progress</option>
         <option value="Located">Located</option>
+      </select><br/>
+      <strong>Work Date</strong><br/>
+      <input id="workDateInput" type="date" style="width:95%" /><br/>
+      <strong>Locate Date</strong><br/>
+      <input id="locateDateInput" type="date" style="width:95%" /><br/>
+      <strong>Category</strong><br/>
+      <select id="categoryInput" style="width:100%">
+        <option value="HDD">HDD</option>
+        <option value="Plow">Plow</option>
+        <option value="Missile">Missile</option>
       </select><br/>
       <button id="${uniqueId}" style="margin-top:6px;width:100%">Submit</button>
     </div>
@@ -164,6 +174,9 @@ window.map.on(L.Draw.Event.CREATED, function (e) {
         const ticket = document.getElementById("ticketInput").value;
         const locationVal = document.getElementById("locationInput").value;
         const status = document.getElementById("statusInput").value;
+        const workDate = document.getElementById("workDateInput").value;
+        const locateDate = document.getElementById("locateDateInput").value;
+        const category = document.getElementById("categoryInput").value;
 
         if (!ticket || !locationVal) {
           alert("Please fill in ticket and location!");
@@ -184,11 +197,13 @@ window.map.on(L.Draw.Event.CREATED, function (e) {
             ticketNumber: ticket,
             location: locationVal,
             status,
+            workDate,
+            locateDate,
+            category,
             geojson: geojsonString,
             archived: false,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
           });
-          // No popup, no reload, just update the map and sidebar:
           loadSegments();
           loadSegmentListSidebar();
           window.map.closePopup();
@@ -230,7 +245,10 @@ function loadSegments() {
         layer.bindPopup(`
           <strong>Ticket:</strong> ${data.ticketNumber}<br/>
           <strong>Location:</strong> ${data.location}<br/>
-          <strong>Status:</strong> ${data.status}
+          <strong>Status:</strong> ${data.status}<br/>
+          <strong>Work Date:</strong> ${data.workDate || ''}<br/>
+          <strong>Locate Date:</strong> ${data.locateDate || ''}<br/>
+          <strong>Category:</strong> ${data.category || ''}
         `);
         layersForBounds.push(layer);
       });
@@ -299,6 +317,9 @@ async function loadSegmentListSidebar() {
             <option value="Located" ${data.status === "Located" ? "selected" : ""}>Located</option>
           </select>
         </div>
+        <div><strong>Work Date:</strong> ${data.workDate || ''}</div>
+        <div><strong>Locate Date:</strong> ${data.locateDate || ''}</div>
+        <div><strong>Category:</strong> ${data.category || ''}</div>
         <button onclick="window.toggleSegmentArchive('${doc.id}', ${!data.archived})">
           ${data.archived ? 'Restore' : 'Archive'}
         </button>
@@ -335,28 +356,33 @@ window.onload = function() {
   }
 };
 
-// Sidebar collapse/expand logic (repeat from map.html in case of async loading)
+// Sidebar slider (centered, modern style)
 document.addEventListener("DOMContentLoaded", function() {
   const sidebar = document.getElementById('sidebar');
   const mapDiv = document.getElementById('map');
-  const toggleBtn = document.getElementById('sidebarToggle');
+  const slider = document.getElementById('sidebarSlider');
   let collapsed = false;
-  if (!toggleBtn) return;
-  toggleBtn.onclick = function() {
-    collapsed = !collapsed;
+
+  function updateSidebarSlider() {
     if (collapsed) {
       sidebar.style.display = 'none';
       mapDiv.style.marginLeft = '0';
-      toggleBtn.innerHTML = '→';
-      toggleBtn.title = "Show sidebar";
+      slider.classList.add('collapsed');
     } else {
       sidebar.style.display = '';
       mapDiv.style.marginLeft = '';
-      toggleBtn.innerHTML = '≡';
-      toggleBtn.title = "Hide sidebar";
+      slider.classList.remove('collapsed');
     }
     setTimeout(() => { 
       if (window.map && window.map.invalidateSize) window.map.invalidateSize();
     }, 300);
-  };
+  }
+
+  if (slider) {
+    slider.onclick = function() {
+      collapsed = !collapsed;
+      updateSidebarSlider();
+    };
+    updateSidebarSlider();
+  }
 });
