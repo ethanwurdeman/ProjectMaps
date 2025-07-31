@@ -16,6 +16,10 @@ let showArchived = false;
 let showArchivedSegments = false;
 let globalConfigFields = []; // Loaded once on startup
 
+// ==== Segment/Sidebar/Map Selection State ====
+let segmentLayerMap = {};    // { segmentId: mapLayer }
+let selectedSegmentId = null;
+
 // ==== Config Loader (GLOBAL) ====
 async function loadGlobalConfig() {
   const doc = await db.collection("global").doc("config").get();
@@ -33,6 +37,34 @@ async function loadGlobalConfig() {
     ];
   }
 }
+
+// ==== Helper for status badge CSS ====
+function statusClass(status) {
+  if (!status) return "";
+  if (status === "Located") return "segment-status-located";
+  if (status === "In Progress") return "segment-status-inprogress";
+  if (status === "Not Located") return "segment-status-notlocated";
+  return "";
+}
+
+// ==== Sidebar <-> Map Segment Selection Logic ====
+window.selectSegmentSidebar = function(segmentId) {
+  selectedSegmentId = segmentId;
+  // Highlight sidebar card
+  document.querySelectorAll('.segment-card').forEach(card => card.classList.remove('selected'));
+  const el = document.getElementById('sidebar_segment_' + segmentId);
+  if (el) el.classList.add('selected');
+  // Zoom to and open popup on map
+  if (segmentLayerMap[segmentId]) {
+    const l = segmentLayerMap[segmentId];
+    try {
+      window.map.fitBounds(l.getBounds().pad(0.3));
+    } catch {}
+    // Open popup
+    if (typeof l.openPopup === "function") l.openPopup();
+    else if (l.getLayers && l.getLayers().length && l.getLayers()[0].openPopup) l.getLayers()[0].openPopup();
+  }
+};
 
 // ==== Sidebar Dashboard Logic ====
 
@@ -138,9 +170,6 @@ async function loadProjectList() {
 }
 
 // ==== Map + Segments Logic ====
-const urlParams = new URLSearchParams(window.location.search);
-currentProjectId = urlParams.get("projectId");
-
 // --- Define base maps ---
 const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap" });
 const satellite = L.tileLayer(
@@ -157,12 +186,10 @@ window.map = L.map("map", {
 });
 
 // --- Define status layers
-
 const statusLayers = {
   "Located": L.layerGroup().addTo(window.map),
   "In Progress": L.layerGroup().addTo(window.map),
   "Not Located": L.layerGroup().addTo(window.map)
-  // Add more statuses if needed
 };
 
 // --- Layer control with baseMaps and overlays, placed at topleft ---
@@ -188,15 +215,14 @@ const drawControl = new L.Control.Draw({
 });
 window.map.addControl(drawControl);
 
-
-
 // ==== Segment Form: BUILT FROM GLOBAL CONFIG ====
 window.map.on(L.Draw.Event.CREATED, async function (e) {
   const layer = e.layer;
   let geojson = layer.toGeoJSON();
   if (!geojson.properties) geojson.properties = {};
 
-  drawnItems.addLayer(layer);
+  // drawnItems no longer needed if we're using statusLayers, but you can still add for editability if needed
+  // drawnItems.addLayer(layer);
 
   await loadGlobalConfig();
 
@@ -263,9 +289,11 @@ function summaryFromFields(obj) {
   return txt.join(" / ");
 }
 
-// ==== Load Segments on Map ====
+// ==== Load Segments on Map (NEW: with sidebar sync and highlight) ====
 function loadSegments() {
   Object.values(statusLayers).forEach(layer => layer.clearLayers());
+  segmentLayerMap = {};
+
   if (!currentProjectId) return;
   db.collection("segments")
     .where("projectId", "==", currentProjectId)
@@ -287,7 +315,16 @@ function loadSegments() {
           }
         }).addTo(statusLayers[data.status || "Not Located"]);
 
-        // Build popup HTML with editable status and delete button
+        // Map doc.id to map layer
+        segmentLayerMap[doc.id] = layer;
+
+        // Add click handler for map <-> sidebar sync
+        layer.on('click', () => {
+          window.selectSegmentSidebar(doc.id);
+          layer.openPopup();
+        });
+
+        // Build popup HTML with editable status and delete button (as before)
         let popupHtml = "";
         for (const field of globalConfigFields) {
           if (data[field.key] !== undefined && field.show) {
@@ -305,6 +342,7 @@ function loadSegments() {
         }
         popupHtml += `<button style="margin-top:8px;color:red" onclick="window.deleteSegment('${doc.id}')">🗑️ Delete Segment</button>`;
         layer.bindPopup(popupHtml);
+
         layersForBounds.push(layer);
       });
       if (layersForBounds.length > 0) {
@@ -322,22 +360,7 @@ function loadSegments() {
     });
 }
 
-// (And don't forget, in your global scope:)
-window.deleteSegment = async function(segmentId) {
-  if (!confirm("Delete this segment? This cannot be undone.")) return;
-  await db.collection("segments").doc(segmentId).delete();
-  logHistory(currentProjectId, "Segment deleted.");
-  loadSegments();
-  loadSegmentListSidebar();
-};
-
-// ==== Segment List in Sidebar ====
-
-window.toggleArchivedSegments = function() {
-  showArchivedSegments = !showArchivedSegments;
-  loadSegmentListSidebar();
-};
-
+// ==== Segment List in Sidebar (Card layout, highlight sync) ====
 async function loadSegmentListSidebar() {
   const segmentListDiv = document.getElementById("segmentList");
   if (!currentProjectId) {
@@ -368,25 +391,33 @@ async function loadSegmentListSidebar() {
 
   snap.forEach(doc => {
     const data = doc.data();
-    html += `<div class="segment-item">`;
-    for (const field of globalConfigFields) {
-      if (!field.show) continue;
-      if (field.key === "status") {
-        html += `<div><strong>${field.label}:</strong>
-          <select id="status_${doc.id}" name="${field.key}" onchange="window.updateSegmentStatus('${doc.id}', this.value)">
-            ${(field.options||[]).map(opt => `<option value="${opt}" ${data.status === opt ? "selected" : ""}>${opt}</option>`).join("")}
-          </select></div>`;
-      } else {
-        html += `<div><strong>${field.label}:</strong> ${data[field.key] || ""}</div>`;
-      }
-    }
-    html += `<button onclick="window.toggleSegmentArchive('${doc.id}', ${!data.archived})">
-      ${data.archived ? 'Restore' : 'Archive'}
-    </button></div>`;
+    // Show only summary info (customize as needed)
+    html += `
+      <div class="segment-card${selectedSegmentId === doc.id ? " selected" : ""}" 
+        onclick="window.selectSegmentSidebar('${doc.id}')"
+        id="sidebar_segment_${doc.id}">
+        <div class="segment-title">
+          ${data.ticketNumber || "(No Ticket #)"}
+          <span class="segment-status ${statusClass(data.status)}">${data.status || ""}</span>
+        </div>
+        <div class="segment-details">
+          <div><b>Location:</b> ${data.location || ""}</div>
+          ${data.workDate ? `<div><b>Work Date:</b> ${data.workDate}</div>` : ""}
+        </div>
+      </div>
+    `;
   });
+
   segmentListDiv.innerHTML = html;
 }
 
+// ==== Archive Toggle for Segments ====
+window.toggleArchivedSegments = function() {
+  showArchivedSegments = !showArchivedSegments;
+  loadSegmentListSidebar();
+};
+
+// ==== Update status, archive, and delete (no change) ====
 window.updateSegmentStatus = async function(segmentId, newStatus) {
   await db.collection("segments").doc(segmentId).update({ status: newStatus });
   const doc = await db.collection("segments").doc(segmentId).get();
@@ -403,7 +434,16 @@ window.toggleSegmentArchive = async function(segmentId, archiveVal) {
   loadSegmentListSidebar();
 };
 
+window.deleteSegment = async function(segmentId) {
+  if (!confirm("Delete this segment? This cannot be undone.")) return;
+  await db.collection("segments").doc(segmentId).delete();
+  logHistory(currentProjectId, "Segment deleted.");
+  loadSegments();
+  loadSegmentListSidebar();
+};
+
 // ==== MESSAGES & HISTORY PANEL LOGIC ====
+// (No change from your original...)
 
 window.openMessages = function() {
   document.getElementById('messagesPanel').style.display = 'block';
@@ -428,7 +468,8 @@ window.showSegments = function() {
   document.getElementById('segmentList').style.display = '';
 };
 
-// Messenger UI
+// Messenger UI/logic, history, logging -- unchanged from your original code...
+
 function renderMessagesPanel() {
   if (!currentProjectId) return;
   const div = document.getElementById('messagesPanel');
@@ -442,7 +483,6 @@ function renderMessagesPanel() {
   loadMessages();
 }
 
-// History UI
 function renderHistoryPanel() {
   if (!currentProjectId) return;
   const div = document.getElementById('historyPanel');
@@ -454,7 +494,6 @@ function renderHistoryPanel() {
   loadHistory();
 }
 
-// Messenger logic
 function loadMessages() {
   if (!currentProjectId) return;
   db.collection("projects").doc(currentProjectId).collection("messages").orderBy("timestamp")
@@ -480,7 +519,6 @@ function sendMessage() {
   document.getElementById('newMsg').value = '';
 }
 
-// History logic
 function loadHistory() {
   if (!currentProjectId) return;
   db.collection("projects").doc(currentProjectId).collection("history").orderBy("timestamp")
@@ -503,6 +541,7 @@ function logHistory(projectId, eventText) {
     user: "User"
   });
 }
+
 // Sidebar collapse logic
 window.toggleSidebar = function() {
   const sidebar = document.getElementById('sidebar');
