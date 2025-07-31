@@ -162,7 +162,7 @@ const baseMaps = {
   "Satellite": satellite,
   "Topo": topo
 };
-window.layersControl = L.control.layers(baseMaps, statusLayers, { position: 'topleft' }).addTo(window.map);
+window.layersControl = L.control.layers(baseMaps, {}, { position: 'topleft' }).addTo(window.map);
 
 // --- Draw Controls (as before, you can adjust position if you want) ---
 const drawControl = new L.Control.Draw({
@@ -181,7 +181,8 @@ window.map.addControl(drawControl);
 
 
 // Move Layers Control to top left with draw tools
-window.layersControl = L.control.layers(null, statusLayers, { position: 'topleft' }).addTo(window.map);
+window.layersControl = L.control.layers(baseMaps, {}, { position: 'topleft' }).addTo(window.map);
+
 
 // ==== Segment Form: BUILT FROM GLOBAL CONFIG ====
 window.map.on(L.Draw.Event.CREATED, async function (e) {
