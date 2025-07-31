@@ -15,6 +15,11 @@ let currentProjectId = null;
 let showArchived = false;
 let showArchivedSegments = false;
 let globalConfigFields = []; // Loaded once on startup
+let allSegmentsCache = []; // Used for fast sidebar filtering
+
+// ==== Filter State ====
+let segmentSearchValue = '';
+let segmentFilters = {};
 
 // ==== Segment/Sidebar/Map Selection State ====
 let segmentLayerMap = {};    // { segmentId: mapLayer }
@@ -26,7 +31,6 @@ async function loadGlobalConfig() {
   if (doc.exists && doc.data().segmentForm && Array.isArray(doc.data().segmentForm.fields)) {
     globalConfigFields = doc.data().segmentForm.fields;
   } else {
-    // Fallback/default config
     globalConfigFields = [
       { key:"ticketNumber", type:"text", label:"Ticket #", required:true, show:true },
       { key:"location", type:"text", label:"Location", required:true, show:true },
@@ -37,7 +41,6 @@ async function loadGlobalConfig() {
     ];
   }
 }
-
 // ==== Helper for status badge CSS ====
 function statusClass(status) {
   if (!status) return "";
@@ -291,8 +294,8 @@ function summaryFromFields(obj) {
 
 // ==== Load Segments on Map (NEW: with sidebar sync and highlight) ====
 function loadSegments() {
-  Object.values(statusLayers).forEach(layer => layer.clearLayers());
-  segmentLayerMap = {};
+  drawnItems.clearLayers();
+  segmentLayerMap = {}; // <-- clear mapping
 
   if (!currentProjectId) return;
   db.collection("segments")
@@ -307,24 +310,22 @@ function loadSegments() {
         try { geojson = JSON.parse(data.geojson); } catch (err) { return; }
         if (!geojson.properties) geojson.properties = {};
 
+        // Draw and store reference
         const layer = L.geoJSON(geojson, {
-          style: {
-            color: data.status === "Located" ? "green" :
-                   data.status === "In Progress" ? "orange" : "red",
-            weight: 4
-          }
-        }).addTo(statusLayers[data.status || "Not Located"]);
+          style: segmentStyle(data)
+        }).addTo(drawnItems);
 
-        // Map doc.id to map layer
+        // Store mapping: doc.id <-> layer
         segmentLayerMap[doc.id] = layer;
 
-        // Add click handler for map <-> sidebar sync
+        // On map click: highlight sidebar
         layer.on('click', () => {
-          window.selectSegmentSidebar(doc.id);
+          selectSegmentSidebar(doc.id);
+          // Also open the popup on the map for the selected layer
           layer.openPopup();
         });
 
-        // Build popup HTML with editable status and delete button (as before)
+        // Build popup HTML (unchanged)
         let popupHtml = "";
         for (const field of globalConfigFields) {
           if (data[field.key] !== undefined && field.show) {
@@ -360,6 +361,9 @@ function loadSegments() {
     });
 }
 
+
+
+
 // ==== Segment List in Sidebar (Card layout, highlight sync) ====
 async function loadSegmentListSidebar() {
   const segmentListDiv = document.getElementById("segmentList");
@@ -374,6 +378,7 @@ async function loadSegmentListSidebar() {
     .where("archived", "==", !!showArchivedSegments);
 
   const snap = await query.get();
+  segmentLayerMap = {}; // reset
 
   let html = `
     <h3 style="display:inline">Segments</h3>
@@ -410,6 +415,58 @@ async function loadSegmentListSidebar() {
 
   segmentListDiv.innerHTML = html;
 }
+// Add global filter/search state
+let sidebarSegmentSearch = '';
+let sidebarSegmentFilters = {};
+
+// In loadSegmentListSidebar, before looping snap.forEach, add:
+let filterHtml = `
+  <div style="margin-bottom:8px;">
+    <input type="text" id="sidebarSegmentSearch" placeholder="Search..." style="width:57%;" value="${sidebarSegmentSearch || ""}">
+`;
+globalConfigFields.filter(f => f.type === "select").forEach(f => {
+  filterHtml += `
+    <select id="sidebarFilter_${f.key}" style="margin-left:4px;">
+      <option value="">All ${f.label}</option>
+      ${(f.options||[]).map(opt => `<option value="${opt}"${sidebarSegmentFilters[f.key]===opt ? " selected" : ""}>${opt}</option>`).join("")}
+    </select>
+  `;
+});
+filterHtml += `</div>`;
+html = filterHtml + html;
+
+// Attach handlers after .innerHTML update:
+setTimeout(() => {
+  document.getElementById('sidebarSegmentSearch').oninput = function() {
+    sidebarSegmentSearch = this.value;
+    loadSegmentListSidebar();
+  };
+  globalConfigFields.filter(f => f.type === "select").forEach(f => {
+    document.getElementById('sidebarFilter_' + f.key).onchange = function() {
+      sidebarSegmentFilters[f.key] = this.value;
+      loadSegmentListSidebar();
+    };
+  });
+}, 0);
+
+// Apply filters as you loop segments:
+snap.forEach(doc => {
+  const data = doc.data();
+  // --- Filter logic ---
+  // Text search
+  if (sidebarSegmentSearch) {
+    let found = false;
+    globalConfigFields.forEach(f => {
+      if (data[f.key] && data[f.key].toString().toLowerCase().includes(sidebarSegmentSearch.toLowerCase())) found = true;
+    });
+    if (!found) return;
+  }
+  // Dropdown filters
+  for (let key in sidebarSegmentFilters) {
+    if (sidebarSegmentFilters[key] && data[key] !== sidebarSegmentFilters[key]) return;
+  }
+  // ... your card rendering here ...
+});
 
 // ==== Archive Toggle for Segments ====
 window.toggleArchivedSegments = function() {
