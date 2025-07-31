@@ -358,6 +358,9 @@ function loadSegments() {
 }
 
 // ==== Segment List in Sidebar (Card layout, highlight sync, filter/search) ====
+// Track which segment cards are expanded
+let expandedSegments = {};
+
 async function loadSegmentListSidebar() {
   const segmentListDiv = document.getElementById("segmentList");
   if (!currentProjectId) {
@@ -400,6 +403,7 @@ async function loadSegmentListSidebar() {
 
   snap.forEach(doc => {
     const data = doc.data();
+    const segmentId = doc.id;
 
     // --- Filter logic ---
     if (segmentSearchValue) {
@@ -415,17 +419,32 @@ async function loadSegmentListSidebar() {
 
     // ---- Render segment card ----
     html += `
-      <div class="segment-card${selectedSegmentId === doc.id ? " selected" : ""}" 
-        onclick="window.selectSegmentSidebar('${doc.id}')"
-        id="sidebar_segment_${doc.id}">
-        <div class="segment-title">
-          ${data.ticketNumber || "(No Ticket #)"}
-          <span class="segment-status ${statusClass(data.status)}">${data.status || ""}</span>
+      <div class="segment-card${selectedSegmentId === segmentId ? " selected" : ""}" 
+        onclick="window.selectSegmentSidebar('${segmentId}')"
+        id="sidebar_segment_${segmentId}">
+        <div class="segment-title" style="display:flex; align-items:center; justify-content:space-between;">
+          <div>
+            ${data.ticketNumber || "(No Ticket #)"}
+            <span class="segment-status ${statusClass(data.status)}">${data.status || ""}</span>
+          </div>
+          <button type="button" class="show-more-btn" style="margin-left:8px;" onclick="event.stopPropagation(); window.toggleSegmentExpand('${segmentId}');">
+            ${expandedSegments[segmentId] ? "Show Less" : "Show More"}
+          </button>
         </div>
         <div class="segment-details">
           <div><b>Location:</b> ${data.location || ""}</div>
           ${data.workDate ? `<div><b>Work Date:</b> ${data.workDate}</div>` : ""}
         </div>
+        ${expandedSegments[segmentId] ? `
+          <div class="segment-extra-details" style="margin-top:8px; border-top:1px solid #ddd; padding-top:6px;">
+            ${globalConfigFields.map(f =>
+              f.show ? "" : `<div><b>${f.label}:</b> ${data[f.key] || ""}</div>`
+            ).join("")}
+            ${globalConfigFields.filter(f => f.show).map(f =>
+              `<div><b>${f.label}:</b> ${data[f.key] || ""}</div>`
+            ).join("")}
+          </div>
+        ` : ""}
       </div>
     `;
   });
@@ -446,6 +465,13 @@ async function loadSegmentListSidebar() {
     });
   }, 0);
 }
+
+// Toggle expand/collapse for a segment card
+window.toggleSegmentExpand = function(segmentId) {
+  expandedSegments[segmentId] = !expandedSegments[segmentId];
+  loadSegmentListSidebar();
+}
+
 
 // ==== Archive Toggle for Segments ====
 window.toggleArchivedSegments = function() {
