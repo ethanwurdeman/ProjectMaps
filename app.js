@@ -156,6 +156,15 @@ window.map = L.map("map", {
   layers: [osm] // default layer
 });
 
+// --- Define status layers
+
+const statusLayers = {
+  "Located": L.layerGroup().addTo(window.map),
+  "In Progress": L.layerGroup().addTo(window.map),
+  "Not Located": L.layerGroup().addTo(window.map)
+  // Add more statuses if needed
+};
+
 // --- Layer control with baseMaps and overlays, placed at topleft ---
 const baseMaps = {
   "Streets": osm,
