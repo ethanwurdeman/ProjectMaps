@@ -14,7 +14,7 @@ const db = firebase.firestore();
 let currentProjectId = null;
 let showArchived = false;
 let showArchivedSegments = false;
-let globalConfigFields = []; // Loaded once on startup
+let globalConfigFields = [];
 let allSegmentsCache = []; // Used for fast sidebar filtering
 
 // ==== Filter State ====
@@ -22,7 +22,7 @@ let segmentSearchValue = '';
 let segmentFilters = {};
 
 // ==== Segment/Sidebar/Map Selection State ====
-let segmentLayerMap = {};    // { segmentId: mapLayer }
+let segmentLayerMap = {};
 let selectedSegmentId = null;
 
 // ==== Config Loader (GLOBAL) ====
@@ -41,6 +41,7 @@ async function loadGlobalConfig() {
     ];
   }
 }
+
 // ==== Helper for status badge CSS ====
 function statusClass(status) {
   if (!status) return "";
@@ -63,7 +64,6 @@ window.selectSegmentSidebar = function(segmentId) {
     try {
       window.map.fitBounds(l.getBounds().pad(0.3));
     } catch {}
-    // Open popup
     if (typeof l.openPopup === "function") l.openPopup();
     else if (l.getLayers && l.getLayers().length && l.getLayers()[0].openPopup) l.getLayers()[0].openPopup();
   }
@@ -185,7 +185,7 @@ const topo = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", { a
 window.map = L.map("map", {
   center: [41.865, -103.667],
   zoom: 10,
-  layers: [osm] // default layer
+  layers: [osm]
 });
 
 // --- Define status layers
@@ -195,7 +195,7 @@ const statusLayers = {
   "Not Located": L.layerGroup().addTo(window.map)
 };
 
-// --- Layer control with baseMaps and overlays, placed at topleft ---
+// --- Layer control with baseMaps and overlays ---
 const baseMaps = {
   "Streets": osm,
   "Satellite": satellite,
@@ -203,10 +203,10 @@ const baseMaps = {
 };
 window.layersControl = L.control.layers(baseMaps, {}, { position: 'topleft' }).addTo(window.map);
 
-// --- Draw Controls (as before, you can adjust position if you want) ---
+// --- Draw Controls ---
 const drawControl = new L.Control.Draw({
   position: 'topleft',
-  edit: false, // disables edit/delete toolbar
+  edit: false,
   draw: {
     polygon: true,
     polyline: true,
@@ -223,9 +223,6 @@ window.map.on(L.Draw.Event.CREATED, async function (e) {
   const layer = e.layer;
   let geojson = layer.toGeoJSON();
   if (!geojson.properties) geojson.properties = {};
-
-  // drawnItems no longer needed if we're using statusLayers, but you can still add for editability if needed
-  // drawnItems.addLayer(layer);
 
   await loadGlobalConfig();
 
@@ -260,7 +257,6 @@ window.map.on(L.Draw.Event.CREATED, async function (e) {
     if (form) {
       form.onsubmit = async function(ev) {
         ev.preventDefault();
-        // Collect all field values
         const segData = { projectId: currentProjectId, archived: false, geojson: JSON.stringify(geojson), timestamp: firebase.firestore.FieldValue.serverTimestamp() };
         for (const field of globalConfigFields) {
           if (!field.show) continue;
@@ -292,10 +288,19 @@ function summaryFromFields(obj) {
   return txt.join(" / ");
 }
 
-// ==== Load Segments on Map (NEW: with sidebar sync and highlight) ====
+// ==== Load Segments on Map ====
+function segmentStyle(data) {
+  // Helper for coloring by status
+  return {
+    color: data.status === "Located" ? "green" :
+           data.status === "In Progress" ? "orange" : "red",
+    weight: 4
+  };
+}
+
 function loadSegments() {
-  drawnItems.clearLayers();
-  segmentLayerMap = {}; // <-- clear mapping
+  Object.values(statusLayers).forEach(layer => layer.clearLayers());
+  segmentLayerMap = {};
 
   if (!currentProjectId) return;
   db.collection("segments")
@@ -310,22 +315,13 @@ function loadSegments() {
         try { geojson = JSON.parse(data.geojson); } catch (err) { return; }
         if (!geojson.properties) geojson.properties = {};
 
-        // Draw and store reference
-        const layer = L.geoJSON(geojson, {
-          style: segmentStyle(data)
-        }).addTo(drawnItems);
-
-        // Store mapping: doc.id <-> layer
+        const layer = L.geoJSON(geojson, { style: segmentStyle(data) }).addTo(statusLayers[data.status || "Not Located"]);
         segmentLayerMap[doc.id] = layer;
-
-        // On map click: highlight sidebar
         layer.on('click', () => {
           selectSegmentSidebar(doc.id);
-          // Also open the popup on the map for the selected layer
           layer.openPopup();
         });
 
-        // Build popup HTML (unchanged)
         let popupHtml = "";
         for (const field of globalConfigFields) {
           if (data[field.key] !== undefined && field.show) {
@@ -361,10 +357,7 @@ function loadSegments() {
     });
 }
 
-
-
-
-// ==== Segment List in Sidebar (Card layout, highlight sync) ====
+// ==== Segment List in Sidebar (Card layout, highlight sync, filter/search) ====
 async function loadSegmentListSidebar() {
   const segmentListDiv = document.getElementById("segmentList");
   if (!currentProjectId) {
@@ -378,7 +371,7 @@ async function loadSegmentListSidebar() {
     .where("archived", "==", !!showArchivedSegments);
 
   const snap = await query.get();
-  segmentLayerMap = {}; // reset
+  segmentLayerMap = {};
 
   let html = `
     <h3 style="display:inline">Segments</h3>
@@ -386,7 +379,18 @@ async function loadSegmentListSidebar() {
       ${showArchivedSegments ? 'Show Active' : 'Show Archived'}
     </button>
     <div style="clear:both"></div>
+    <div style="margin-bottom:8px;">
+      <input type="text" id="sidebarSegmentSearch" placeholder="Search..." style="width:57%;" value="${segmentSearchValue || ""}">
   `;
+  globalConfigFields.filter(f => f.type === "select").forEach(f => {
+    html += `
+      <select id="sidebarFilter_${f.key}" style="margin-left:4px;">
+        <option value="">All ${f.label}</option>
+        ${(f.options||[]).map(opt => `<option value="${opt}"${segmentFilters[f.key]===opt ? " selected" : ""}>${opt}</option>`).join("")}
+      </select>
+    `;
+  });
+  html += `</div>`;
 
   if (snap.empty) {
     html += "<em>No segments yet.</em>";
@@ -396,7 +400,20 @@ async function loadSegmentListSidebar() {
 
   snap.forEach(doc => {
     const data = doc.data();
-    // Show only summary info (customize as needed)
+
+    // --- Filter logic ---
+    if (segmentSearchValue) {
+      let found = false;
+      globalConfigFields.forEach(f => {
+        if (data[f.key] && data[f.key].toString().toLowerCase().includes(segmentSearchValue.toLowerCase())) found = true;
+      });
+      if (!found) return;
+    }
+    for (let key in segmentFilters) {
+      if (segmentFilters[key] && data[key] !== segmentFilters[key]) return;
+    }
+
+    // ---- Render segment card ----
     html += `
       <div class="segment-card${selectedSegmentId === doc.id ? " selected" : ""}" 
         onclick="window.selectSegmentSidebar('${doc.id}')"
@@ -414,59 +431,21 @@ async function loadSegmentListSidebar() {
   });
 
   segmentListDiv.innerHTML = html;
-}
-// Add global filter/search state
-let sidebarSegmentSearch = '';
-let sidebarSegmentFilters = {};
 
-// In loadSegmentListSidebar, before looping snap.forEach, add:
-let filterHtml = `
-  <div style="margin-bottom:8px;">
-    <input type="text" id="sidebarSegmentSearch" placeholder="Search..." style="width:57%;" value="${sidebarSegmentSearch || ""}">
-`;
-globalConfigFields.filter(f => f.type === "select").forEach(f => {
-  filterHtml += `
-    <select id="sidebarFilter_${f.key}" style="margin-left:4px;">
-      <option value="">All ${f.label}</option>
-      ${(f.options||[]).map(opt => `<option value="${opt}"${sidebarSegmentFilters[f.key]===opt ? " selected" : ""}>${opt}</option>`).join("")}
-    </select>
-  `;
-});
-filterHtml += `</div>`;
-html = filterHtml + html;
-
-// Attach handlers after .innerHTML update:
-setTimeout(() => {
-  document.getElementById('sidebarSegmentSearch').oninput = function() {
-    sidebarSegmentSearch = this.value;
-    loadSegmentListSidebar();
-  };
-  globalConfigFields.filter(f => f.type === "select").forEach(f => {
-    document.getElementById('sidebarFilter_' + f.key).onchange = function() {
-      sidebarSegmentFilters[f.key] = this.value;
+  // ---- Attach handlers to filter/search fields ----
+  setTimeout(() => {
+    document.getElementById('sidebarSegmentSearch').oninput = function() {
+      segmentSearchValue = this.value;
       loadSegmentListSidebar();
     };
-  });
-}, 0);
-
-// Apply filters as you loop segments:
-snap.forEach(doc => {
-  const data = doc.data();
-  // --- Filter logic ---
-  // Text search
-  if (sidebarSegmentSearch) {
-    let found = false;
-    globalConfigFields.forEach(f => {
-      if (data[f.key] && data[f.key].toString().toLowerCase().includes(sidebarSegmentSearch.toLowerCase())) found = true;
+    globalConfigFields.filter(f => f.type === "select").forEach(f => {
+      document.getElementById('sidebarFilter_' + f.key).onchange = function() {
+        segmentFilters[f.key] = this.value;
+        loadSegmentListSidebar();
+      };
     });
-    if (!found) return;
-  }
-  // Dropdown filters
-  for (let key in sidebarSegmentFilters) {
-    if (sidebarSegmentFilters[key] && data[key] !== sidebarSegmentFilters[key]) return;
-  }
-  // ... your card rendering here ...
-});
+  }, 0);
+}
 
 // ==== Archive Toggle for Segments ====
 window.toggleArchivedSegments = function() {
@@ -474,7 +453,7 @@ window.toggleArchivedSegments = function() {
   loadSegmentListSidebar();
 };
 
-// ==== Update status, archive, and delete (no change) ====
+// ==== Update status, archive, and delete ====
 window.updateSegmentStatus = async function(segmentId, newStatus) {
   await db.collection("segments").doc(segmentId).update({ status: newStatus });
   const doc = await db.collection("segments").doc(segmentId).get();
@@ -500,7 +479,6 @@ window.deleteSegment = async function(segmentId) {
 };
 
 // ==== MESSAGES & HISTORY PANEL LOGIC ====
-// (No change from your original...)
 
 window.openMessages = function() {
   document.getElementById('messagesPanel').style.display = 'block';
@@ -524,8 +502,6 @@ window.showSegments = function() {
   document.getElementById('historyPanel').style.display = 'none';
   document.getElementById('segmentList').style.display = '';
 };
-
-// Messenger UI/logic, history, logging -- unchanged from your original code...
 
 function renderMessagesPanel() {
   if (!currentProjectId) return;
