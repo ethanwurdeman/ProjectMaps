@@ -184,9 +184,12 @@ const topo = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", { a
 // --- Add default base map to map (OSM) ---
 window.map = L.map("map", {
   center: [41.865, -103.667],
-  zoom: 10,
+  zoom: 12,
   layers: [osm]
 });
+
+// 👇 ADD THIS RIGHT HERE:
+const drawnItems = new L.FeatureGroup().addTo(window.map);
 
 // --- Define status layers
 const statusLayers = {
@@ -206,21 +209,37 @@ window.layersControl = L.control.layers(baseMaps, {}, { position: 'topleft' }).a
 // --- Draw Controls ---
 const drawControl = new L.Control.Draw({
   position: 'topleft',
-  edit: false,
+  edit: {
+    featureGroup: drawnItems
+  },
   draw: {
-    polygon: true,
-    polyline: true,
+    polygon: {
+      shapeOptions: {
+        color: '#e6007a',      // Pink color
+        weight: 5,             // Thicker line
+        opacity: 1,
+      }
+    },
+    polyline: {
+      shapeOptions: {
+        color: '#e6007a',      // Pink color
+        weight: 5,             // Thicker line
+        opacity: 1,
+      }
+    },
     rectangle: false,
-    circle: false,
+    circle: true,
     marker: true,
-    circlemarker: false
+    circlemarker: true
   }
 });
+
 window.map.addControl(drawControl);
 
 // ==== Segment Form: BUILT FROM GLOBAL CONFIG ====
 window.map.on(L.Draw.Event.CREATED, async function (e) {
   const layer = e.layer;
+  drawnItems.addLayer(layer); // 👈 Add this line!
   let geojson = layer.toGeoJSON();
   if (!geojson.properties) geojson.properties = {};
 
