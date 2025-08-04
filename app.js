@@ -58,15 +58,28 @@ function statusClass(status) {
 // ==== Sidebar <-> Map Segment Selection Logic ====
 window.selectSegmentSidebar = function(segmentId) {
   selectedSegmentId = segmentId;
+  // Highlight sidebar card
   document.querySelectorAll('.segment-card').forEach(card => card.classList.remove('selected'));
   const el = document.getElementById('sidebar_segment_' + segmentId);
   if (el) el.classList.add('selected');
+
+  // --- SNAP TO MAP LAYER! ---
   if (segmentLayerMap[segmentId]) {
     const l = segmentLayerMap[segmentId];
+    // Try to zoom to the bounds
+    try {
+      if (typeof l.getBounds === "function") {
+        window.map.fitBounds(l.getBounds().pad(0.3)); // this is the zoom!
+      } else if (l.getLayers && l.getLayers().length && l.getLayers()[0].getBounds) {
+        window.map.fitBounds(l.getLayers()[0].getBounds().pad(0.3));
+      }
+    } catch (e) {}
+    // Open popup
     if (typeof l.openPopup === "function") l.openPopup();
     else if (l.getLayers && l.getLayers().length && l.getLayers()[0].openPopup) l.getLayers()[0].openPopup();
   }
 };
+
 
 window.createProject = async function() {
   const name = document.getElementById("newProjectName").value.trim();
@@ -137,6 +150,25 @@ window.returnToProjectList = function() {
   document.getElementById('segmentList').innerHTML = '';
   Object.values(statusLayers).forEach(layer => layer.clearLayers());
   loadProjectList();
+};
+window.openMessages = function() {
+  document.getElementById('messagesPanel').style.display = 'block';
+  document.getElementById('historyPanel').style.display = 'none';
+  document.getElementById('segmentList').style.display = 'none';
+  renderMessagesPanel();
+};
+
+window.openHistory = function() {
+  document.getElementById('messagesPanel').style.display = 'none';
+  document.getElementById('historyPanel').style.display = 'block';
+  document.getElementById('segmentList').style.display = 'none';
+  renderHistoryPanel();
+};
+
+window.showSegments = function() {
+  document.getElementById('messagesPanel').style.display = 'none';
+  document.getElementById('historyPanel').style.display = 'none';
+  document.getElementById('segmentList').style.display = '';
 };
 
 // ==== Project List with Dashboard Summary ====
@@ -346,14 +378,6 @@ function bindSegmentFormSubmit(layer, geojson, segmentId = null) {
 }
 
 // ==== Load Segments on Map ====
-function segmentStyle(data) {
-  return {
-    color: data.status === "Located" ? "green" :
-           data.status === "In Progress" ? "orange" : "red",
-    weight: 4
-  };
-}
-
 function loadSegments() {
   Object.values(statusLayers).forEach(layer => layer.clearLayers());
   segmentLayerMap = {};
@@ -364,6 +388,7 @@ function loadSegments() {
     .where("archived", "==", false)
     .get()
     .then(snap => {
+      const layersForBounds = [];
       snap.forEach(doc => {
         const data = doc.data();
         let geojson = {};
@@ -372,6 +397,7 @@ function loadSegments() {
 
         const layer = L.geoJSON(geojson, { style: segmentStyle(data) }).addTo(statusLayers[data.status || "Not Located"]);
         segmentLayerMap[doc.id] = layer;
+        layersForBounds.push(layer);
         layer.on('click', () => {
           selectSegmentSidebar(doc.id);
           let popupHtml = "";
@@ -394,6 +420,20 @@ function loadSegments() {
           layer.bindPopup(popupHtml).openPopup();
         });
       });
+
+      // Auto-zoom to all loaded segment layers (only on project load)
+      if (layersForBounds.length > 0) {
+        let bounds = null;
+        layersForBounds.forEach(l => {
+          try {
+            const lb = l.getBounds();
+            bounds = bounds ? bounds.extend(lb) : lb;
+          } catch { /* skip if marker */ }
+        });
+        if (bounds && bounds.isValid()) {
+          window.map.fitBounds(bounds.pad(0.2));
+        }
+      }
     });
 }
 
@@ -544,6 +584,66 @@ window.toggleSidebar = function() {
   } else {
     btn.innerHTML = '&#9664;';
   }
+}
+
+
+function renderMessagesPanel() {
+  if (!currentProjectId) return;
+  const div = document.getElementById('messagesPanel');
+  div.innerHTML = `
+    <button class="panel-close-btn" onclick="showSegments()" title="Close">&times;</button>
+    <h3>💬 Messages</h3>
+    <div id="chatMessages"></div>
+    <textarea id="newMsg" rows="2" style="width:98%" placeholder="Type message..."></textarea>
+    <button onclick="sendMessage()" style="margin-top:3px;width:50%;">Send</button>
+  `;
+  loadMessages();
+}
+
+function renderHistoryPanel() {
+  if (!currentProjectId) return;
+  const div = document.getElementById('historyPanel');
+  div.innerHTML = `
+    <button class="panel-close-btn" onclick="showSegments()" title="Close">&times;</button>
+    <h3>📜 Project History</h3>
+    <div id="historyLog"></div>
+  `;
+  loadHistory();
+}
+function loadMessages() {
+  if (!currentProjectId) return;
+  db.collection("projects").doc(currentProjectId).collection("messages").orderBy("timestamp")
+    .onSnapshot(snap => {
+      const div = document.getElementById('chatMessages');
+      let html = '';
+      snap.forEach(doc => {
+        const m = doc.data();
+        // Format timestamp (if available)
+        let ts = "";
+        if (m.timestamp && typeof m.timestamp.toDate === "function") {
+          const d = m.timestamp.toDate();
+          ts = `${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+        }
+        html += `
+          <div style="margin-bottom:6px;">
+            <span style="color:#1976d2;font-weight:bold;">${m.user || 'User'}</span>
+            <span style="color:#999;font-size:0.95em;margin-left:5px;">${ts}</span>
+            <br>${m.text}
+          </div>`;
+      });
+      div.innerHTML = html || '<em>No messages yet.</em>';
+      div.scrollTop = div.scrollHeight;
+    });
+}
+function sendMessage() {
+  const val = document.getElementById('newMsg').value.trim();
+  if (!val || !currentProjectId) return;
+  db.collection("projects").doc(currentProjectId).collection("messages").add({
+    text: val,
+    user: (window.currentUser && window.currentUser.email) ? window.currentUser.email : "User",
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  document.getElementById('newMsg').value = '';
 }
 
 // ==== Initial Load ====
