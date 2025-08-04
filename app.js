@@ -53,6 +53,14 @@ function statusClass(status) {
   if (status === "Not Located") return "segment-status-notlocated";
   return "";
 }
+function segmentStyle(data) {
+  return {
+    color: data.status === "Located" ? "green"
+         : data.status === "In Progress" ? "orange"
+         : "red",
+    weight: 4
+  };
+}
 
 // ==== Sidebar <-> Map Segment Selection Logic ====
 window.selectSegmentSidebar = function(segmentId) {
