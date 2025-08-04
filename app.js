@@ -40,7 +40,6 @@ async function loadGlobalConfig() {
     ];
   }
 }
-};
 function closePanels() {
   document.getElementById('messagesPanel').style.display = 'none';
   document.getElementById('historyPanel').style.display = 'none';
@@ -124,6 +123,8 @@ window.toggleArchiveProject = async function(projectId, isActive) {
   await db.collection("projects").doc(projectId).update({ archived: !isActive });
   logHistory(projectId, isActive ? "Project archived." : "Project restored.");
   loadProjectList();
+}
+
 
 window.switchProject = function(projectId) {
   closePanels();
