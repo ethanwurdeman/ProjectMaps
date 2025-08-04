@@ -23,7 +23,7 @@
       position: relative;
     }
     #sidebar {
-      width: 330px;
+      width: 340px;
       background: #f4f4f4;
       padding: 14px 10px 10px 10px;
       overflow-y: auto;
@@ -46,12 +46,10 @@
     #sidebar.collapsed #sidebarContent {
       display: none;
     }
-
-    /* COLLAPSE BUTTON (OUTSIDE SIDEBAR) */
     #collapseBtn {
       position: absolute;
       top: 50%;
-      left: 330px; /* Same as sidebar width */
+      left: 340px;
       transform: translateY(-50%);
       z-index: 99;
       padding: 8px 12px;
@@ -96,79 +94,91 @@
       right: 18px;
       z-index: 2000;
     }
-    .segment-card {
-    background: #fff;
-    border: 2px solid #e0e0e0;
-    border-radius: 10px;
-    padding: 10px 14px 10px 16px;
-    margin-bottom: 14px;
-    transition: border 0.2s, box-shadow 0.2s;
-    cursor: pointer;
-    box-shadow: 0 1px 5px 0 rgba(0,0,0,0.04);
-    position: relative;
-  }
- 
-  .segment-card.selected {
-    border: 2px solid #1976d2;
-    background: #f3f9ff;
-  }
-  .segment-extra-details {
-    color: #222;
-    font-size: 0.97em;
-  }
-  .show-more-btn {
-    background: #f2f2f2;
-    border: 1px solid #bbb;
-    border-radius: 4px;
-    font-size: 0.97em;
-    cursor: pointer;
-    padding: 2px 8px;
-  }
-
-  }
-  .segment-title {
-    font-size: 1.1em;
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 2px;
-  }
-  .segment-status {
-    display: inline-block;
-    padding: 2px 9px;
-    border-radius: 12px;
-    background: #f0f0f0;
-    font-size: 0.92em;
-    font-weight: bold;
-    margin-left: 7px;
-  }
-  .segment-status-located { background: #c8e6c9; color: #388e3c; }
-  .segment-status-inprogress { background: #ffe0b2; color: #f57c00; }
-  .segment-status-notlocated { background: #ffcdd2; color: #c62828; }
-  .segment-details {
-    font-size: 0.95em;
-    margin-top: 4px;
-    color: #666;
-  }
-    .leaflet-div-icon {
-  border-radius: 50%;
-  width: 10px !important;
-  height: 10px !important;
-  margin-left: -5px !important;
-  margin-top: -5px !important;
-  border: 2px solid #e6007a !important;
-  background: #fff !important;
-  box-shadow: 0 0 2px #e6007a;
-}
-.leaflet-editing-icon {
-  background: #fff !important;
-  border: 2px solid #e6007a !important;
-  width: 10px !important;
-  height: 10px !important;
-  border-radius: 50%;
-  margin-left: -5px !important;
-  margin-top: -5px !important;
-}
-
+    /* Project & Segment Card Styles */
+    .project-item, .segment-card {
+      background: #fff;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      padding: 10px 16px 10px 16px;
+      margin-bottom: 14px;
+      transition: border 0.2s, box-shadow 0.2s;
+      box-shadow: 0 1px 5px 0 rgba(0,0,0,0.04);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+    }
+    .segment-card.selected {
+      border: 2px solid #1976d2;
+      background: #f3f9ff;
+    }
+    .segment-title {
+      font-size: 1.1em;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 2px;
+      flex: 1;
+    }
+    .segment-status {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 12px;
+      background: #f0f0f0;
+      font-size: 0.92em;
+      font-weight: bold;
+      margin-left: 7px;
+    }
+    .segment-status-located { background: #c8e6c9; color: #388e3c; }
+    .segment-status-inprogress { background: #ffe0b2; color: #f57c00; }
+    .segment-status-notlocated { background: #ffcdd2; color: #c62828; }
+    .segment-details {
+      font-size: 0.95em;
+      margin-top: 4px;
+      color: #666;
+    }
+    .segment-card-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-left: 12px;
+    }
+    .show-more-btn, .edit-segment-btn, .delete-segment-btn {
+      background: #f2f2f2;
+      border: 1px solid #bbb;
+      border-radius: 4px;
+      font-size: 0.97em;
+      cursor: pointer;
+      padding: 3px 8px;
+      margin-bottom: 2px;
+      margin-top: 2px;
+    }
+    .edit-segment-btn { background: #ffe0ee; color: #e6007a; border: 1px solid #e6007a;}
+    .delete-segment-btn { background: #ffecec; color: #c62828; border: 1px solid #c62828;}
+    .show-more-btn:hover, .edit-segment-btn:hover, .delete-segment-btn:hover { background: #e5e5e5; }
+    .segment-extra-details {
+      color: #222;
+      font-size: 0.97em;
+      margin-top: 10px;
+      padding-top: 6px;
+      border-top: 1px solid #ddd;
+    }
+    /* LEAFLET DRAW/EDIT HANDLE CUSTOMIZATION */
+    .leaflet-div-icon, .leaflet-editing-icon {
+      border-radius: 50%;
+      width: 10px !important;
+      height: 10px !important;
+      margin-left: -5px !important;
+      margin-top: -5px !important;
+      border: 2px solid #e6007a !important;
+      background: #fff !important;
+      box-shadow: 0 0 2px #e6007a;
+    }
+    /* Make pink lines a little thicker */
+    .leaflet-interactive {
+      stroke: #e6007a !important;
+      stroke-width: 5 !important;
+      opacity: 1 !important;
+    }
   </style>
 </head>
 <body>
@@ -180,7 +190,6 @@
   <!-- Sidebar (left) -->
   <div id="sidebar">
     <div id="sidebarContent">
-      <!-- Sidebar Content (Dashboard, Project List, Segments, etc) -->
       <div id="projectMenu">
         <button onclick="window.location.href='dashboard.html'" style="margin-bottom:10px;">&larr; Back to Dashboard</button>
         <h2>🗂 Projects</h2>
@@ -241,13 +250,12 @@
       var btn = document.getElementById('collapseBtn');
       sidebar.classList.toggle('collapsed');
       if (sidebar.classList.contains('collapsed')) {
-        btn.innerHTML = '&#9654;'; // Arrow right
+        btn.innerHTML = '&#9654;';
         btn.setAttribute('aria-label', 'Expand sidebar');
       } else {
-        btn.innerHTML = '&#9664;'; // Arrow left
+        btn.innerHTML = '&#9664;';
         btn.setAttribute('aria-label', 'Collapse sidebar');
       }
-      // Fix map resize when sidebar changes
       if (window.map) setTimeout(() => { window.map.invalidateSize(); }, 310);
     }
   </script>
