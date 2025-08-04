@@ -7,27 +7,24 @@ const firebaseConfig = {
   messagingSenderId: "676439686152",
   appId: "1:676439686152:web:0fdc2d8aab41aec67fa5bd"
 };
-firebase.initializeApp(firebaseConfig);
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
 const db = firebase.firestore();
 
-// ==== Utility ====
+// ==== Utility and State ====
 let currentProjectId = null;
 let showArchived = false;
 let showArchivedSegments = false;
 let globalConfigFields = [];
-let allSegmentsCache = [];
 let editingSegmentId = null;
-
-// ==== Filter State ====
 let segmentSearchValue = '';
 let segmentFilters = {};
-
-// ==== Segment/Sidebar/Map Selection State ====
 let segmentLayerMap = {};
 let selectedSegmentId = null;
+let expandedSegments = {};
 
-// ==== Config Loader (GLOBAL) ====
-// -- TICKET NUMBER & WORK DATE NOW OPTIONAL --
+// ==== Load global config ====
 async function loadGlobalConfig() {
   const doc = await db.collection("global").doc("config").get();
   if (doc.exists && doc.data().segmentForm && Array.isArray(doc.data().segmentForm.fields)) {
@@ -44,7 +41,6 @@ async function loadGlobalConfig() {
   }
 }
 
-// ==== Helper for status badge CSS ====
 function statusClass(status) {
   if (!status) return "";
   if (status === "Located") return "segment-status-located";
@@ -61,14 +57,10 @@ window.selectSegmentSidebar = function(segmentId) {
   if (el) el.classList.add('selected');
   if (segmentLayerMap[segmentId]) {
     const l = segmentLayerMap[segmentId];
-    try { window.map.fitBounds(l.getBounds().pad(0.3)); } catch {}
     if (typeof l.openPopup === "function") l.openPopup();
     else if (l.getLayers && l.getLayers().length && l.getLayers()[0].openPopup) l.getLayers()[0].openPopup();
   }
 };
-
-// ==== Sidebar Dashboard Logic ====
-// (unchanged, dashboard summary in loadProjectList below)
 
 window.createProject = async function() {
   const name = document.getElementById("newProjectName").value.trim();
@@ -142,7 +134,7 @@ window.returnToProjectList = function() {
   loadProjectList();
 };
 
-// ==== PROJECT LIST SUMMARY (for dashboard) ====
+// ==== Project List with Dashboard Summary ====
 async function loadProjectList() {
   const listDiv = document.getElementById("projectList");
   listDiv.innerHTML = "<p>Loading...</p>";
@@ -198,7 +190,6 @@ async function loadProjectList() {
 }
 
 // ==== Map + Segments Logic ====
-// --- Define base maps ---
 const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap" });
 const satellite = L.tileLayer(
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -211,18 +202,14 @@ window.map = L.map("map", {
   zoom: 12,
   layers: [osm]
 });
-
-// 👇 Add for editing geometry
 const drawnItems = new L.FeatureGroup().addTo(window.map);
 
-// --- Define status layers
 const statusLayers = {
   "Located": L.layerGroup().addTo(window.map),
   "In Progress": L.layerGroup().addTo(window.map),
   "Not Located": L.layerGroup().addTo(window.map)
 };
 
-// --- Layer control with baseMaps and overlays ---
 const baseMaps = {
   "Streets": osm,
   "Satellite": satellite,
@@ -230,24 +217,15 @@ const baseMaps = {
 };
 window.layersControl = L.control.layers(baseMaps, {}, { position: 'topleft' }).addTo(window.map);
 
-// --- Draw Controls ---
 const drawControl = new L.Control.Draw({
   position: 'topleft',
   edit: { featureGroup: drawnItems },
   draw: {
     polygon: {
-      shapeOptions: {
-        color: '#e6007a',
-        weight: 5,
-        opacity: 1
-      }
+      shapeOptions: { color: '#e6007a', weight: 5, opacity: 1 }
     },
     polyline: {
-      shapeOptions: {
-        color: '#e6007a',
-        weight: 5,
-        opacity: 1
-      }
+      shapeOptions: { color: '#e6007a', weight: 5, opacity: 1 }
     },
     rectangle: false,
     circle: true,
@@ -257,51 +235,23 @@ const drawControl = new L.Control.Draw({
 });
 window.map.addControl(drawControl);
 
-// ==== Segment Form: BUILT FROM GLOBAL CONFIG ====
-// --- Main "draw complete" handler: ---
-window.map.on(L.Draw.Event.CREATED, async function (e) {
-  const layer = e.layer;
-  drawnItems.addLayer(layer);
-  let geojson = layer.toGeoJSON();
-  if (!geojson.properties) geojson.properties = {};
-
-  await loadGlobalConfig();
-  editingSegmentId = null; // Not editing, this is a new segment
-
-  // --- Length in feet (for polylines/polygons) ---
-  let lengthFeet = "";
-  if (geojson.geometry.type === "LineString" || geojson.geometry.type === "Polygon") {
-    const meters = getGeojsonLengthMeters(geojson);
-    lengthFeet = Math.round(meters * 3.28084) + " ft";
+// ==== Segment Length Helpers ====
+function getGeojsonLengthMeters(geojson) {
+  let coords = [];
+  if (geojson.geometry.type === "LineString") coords = geojson.geometry.coordinates;
+  else if (geojson.geometry.type === "Polygon") coords = geojson.geometry.coordinates[0];
+  else return 0;
+  let m = 0;
+  for (let i=1;i<coords.length;i++) {
+    m += L.latLng(coords[i-1][1],coords[i-1][0]).distanceTo(L.latLng(coords[i][1],coords[i][0]));
   }
+  return m;
+}
+function getGeojsonLengthFeet(geojson) {
+  return Math.round(getGeojsonLengthMeters(geojson) * 3.28084);
+}
 
-  layer.bindPopup(segmentFormHtml(globalConfigFields, {}, lengthFeet)).openPopup();
-
-  // Handle form submit (for NEW segment)
-  setTimeout(() => bindSegmentFormSubmit(layer, geojson), 200);
-});
-
-// === Edit handler for geometry ===
-window.editSegmentGeometry = function(segmentId) {
-  // Remove all edit mode
-  drawnItems.clearLayers();
-  Object.values(segmentLayerMap).forEach(l => { try { l.off('click'); window.map.removeLayer(l); } catch {} });
-  // Re-draw just this segment for editing
-  db.collection("segments").doc(segmentId).get().then(doc => {
-    const data = doc.data();
-    let geojson = JSON.parse(data.geojson);
-    let layer = L.geoJSON(geojson, {
-      style: { color: "#e6007a", weight: 5, opacity: 1 }
-    }).addTo(drawnItems);
-    window.map.fitBounds(layer.getBounds());
-    editingSegmentId = segmentId;
-    // --- Show form with existing info
-    layer.bindPopup(segmentFormHtml(globalConfigFields, data, getGeojsonLengthFeet(geojson) + " ft", true)).openPopup();
-    setTimeout(() => bindSegmentFormSubmit(layer, geojson, segmentId), 200);
-  });
-};
-
-// --- Build a segment form as HTML (reusable for add/edit) ---
+// ==== Segment Form (Add/Edit) ====
 function segmentFormHtml(fields, values, lengthFeet, editing = false) {
   let html = `<form id="segmentForm">`;
   if (lengthFeet) html += `<div><b>Length:</b> ${lengthFeet}</div>`;
@@ -330,13 +280,43 @@ function segmentFormHtml(fields, values, lengthFeet, editing = false) {
   return html;
 }
 
-// --- Bind form submit for both add/edit ---
+// ==== Drawing a new segment (create) ====
+window.map.on(L.Draw.Event.CREATED, async function (e) {
+  const layer = e.layer;
+  drawnItems.addLayer(layer);
+  let geojson = layer.toGeoJSON();
+  if (!geojson.properties) geojson.properties = {};
+  await loadGlobalConfig();
+  editingSegmentId = null;
+  let lengthFeet = "";
+  if (geojson.geometry.type === "LineString" || geojson.geometry.type === "Polygon") {
+    const meters = getGeojsonLengthMeters(geojson);
+    lengthFeet = Math.round(meters * 3.28084) + " ft";
+  }
+  layer.bindPopup(segmentFormHtml(globalConfigFields, {}, lengthFeet)).openPopup();
+  setTimeout(() => bindSegmentFormSubmit(layer, geojson), 200);
+});
+
+// ==== Edit segment geometry/info ====
+window.editSegmentGeometry = function(segmentId) {
+  drawnItems.clearLayers();
+  Object.values(segmentLayerMap).forEach(l => { try { l.off('click'); window.map.removeLayer(l); } catch {} });
+  db.collection("segments").doc(segmentId).get().then(doc => {
+    const data = doc.data();
+    let geojson = JSON.parse(data.geojson);
+    let layer = L.geoJSON(geojson, { style: { color: "#e6007a", weight: 5, opacity: 1 } }).addTo(drawnItems);
+    window.map.fitBounds(layer.getBounds());
+    editingSegmentId = segmentId;
+    layer.bindPopup(segmentFormHtml(globalConfigFields, data, getGeojsonLengthFeet(geojson) + " ft", true)).openPopup();
+    setTimeout(() => bindSegmentFormSubmit(layer, geojson, segmentId), 200);
+  });
+};
+
 function bindSegmentFormSubmit(layer, geojson, segmentId = null) {
   const form = document.getElementById("segmentForm");
   if (!form) return;
   form.onsubmit = async function(ev) {
     ev.preventDefault();
-    // Collect values
     const segData = { projectId: currentProjectId, archived: false, geojson: JSON.stringify(geojson), timestamp: firebase.firestore.FieldValue.serverTimestamp() };
     for (const field of globalConfigFields) {
       if (!field.show) continue;
@@ -360,23 +340,6 @@ function bindSegmentFormSubmit(layer, geojson, segmentId = null) {
   };
 }
 
-// ==== LENGTH (meters, feet) ====
-function getGeojsonLengthMeters(geojson) {
-  // Polyline: sum distances between coordinates
-  let coords = [];
-  if (geojson.geometry.type === "LineString") coords = geojson.geometry.coordinates;
-  else if (geojson.geometry.type === "Polygon") coords = geojson.geometry.coordinates[0];
-  else return 0;
-  let m = 0;
-  for (let i=1;i<coords.length;i++) {
-    m += L.latLng(coords[i-1][1],coords[i-1][0]).distanceTo(L.latLng(coords[i][1],coords[i][0]));
-  }
-  return m;
-}
-function getGeojsonLengthFeet(geojson) {
-  return Math.round(getGeojsonLengthMeters(geojson) * 3.28084);
-}
-
 // ==== Load Segments on Map ====
 function segmentStyle(data) {
   return {
@@ -390,7 +353,6 @@ function loadSegments() {
   Object.values(statusLayers).forEach(layer => layer.clearLayers());
   segmentLayerMap = {};
   drawnItems.clearLayers();
-
   if (!currentProjectId) return;
   db.collection("segments")
     .where("projectId", "==", currentProjectId)
@@ -407,11 +369,209 @@ function loadSegments() {
         segmentLayerMap[doc.id] = layer;
         layer.on('click', () => {
           selectSegmentSidebar(doc.id);
-          // Popup with details + EDIT BUTTON
           let popupHtml = "";
           for (const field of globalConfigFields) {
             if (data[field.key] !== undefined && field.show) {
               if (field.key === "status") {
                 popupHtml += `<div><strong>${field.label}:</strong>
                   <select id="popupStatus_${doc.id}" name="${field.key}">
-                    ${(field.options||[]).map(opt
+                    ${(field.options||[]).map(opt => `<option value="${opt}" ${data.status === opt ? "selected" : ""}>${opt}</option>`).join("")}
+                  </select>
+                  <button onclick="window.updateSegmentStatus('${doc.id}', document.getElementById('popupStatus_${doc.id}').value)">Save</button>
+                </div>`;
+              } else {
+                popupHtml += `<div><strong>${field.label}:</strong> ${data[field.key]}</div>`;
+              }
+            }
+          }
+          popupHtml += `<button style="margin-top:8px;color:red" onclick="window.deleteSegment('${doc.id}')">🗑️ Delete Segment</button>`;
+          popupHtml += `<button style="margin-left:8px" onclick="window.editSegmentGeometry('${doc.id}')">✏️ Edit Segment</button>`;
+          layer.bindPopup(popupHtml).openPopup();
+        });
+      });
+    });
+}
+
+// ==== Segment List in Sidebar (Card layout, expand/collapse, filters/search) ====
+async function loadSegmentListSidebar() {
+  const segmentListDiv = document.getElementById("segmentList");
+  if (!currentProjectId) {
+    segmentListDiv.innerHTML = "";
+    return;
+  }
+  await loadGlobalConfig();
+  let query = db.collection("segments")
+    .where("projectId", "==", currentProjectId)
+    .where("archived", "==", !!showArchivedSegments);
+
+  const snap = await query.get();
+  segmentLayerMap = {};
+
+  let html = `
+    <h3 style="display:inline">Segments</h3>
+    <button onclick="toggleArchivedSegments()" style="float:right;">
+      ${showArchivedSegments ? 'Show Active' : 'Show Archived'}
+    </button>
+    <div style="clear:both"></div>
+    <div style="margin-bottom:8px;">
+      <input type="text" id="sidebarSegmentSearch" placeholder="Search..." style="width:57%;" value="${segmentSearchValue || ""}">
+  `;
+  globalConfigFields.filter(f => f.type === "select").forEach(f => {
+    html += `
+      <select id="sidebarFilter_${f.key}" style="margin-left:4px;">
+        <option value="">All ${f.label}</option>
+        ${(f.options||[]).map(opt => `<option value="${opt}"${segmentFilters[f.key]===opt ? " selected" : ""}>${opt}</option>`).join("")}
+      </select>
+    `;
+  });
+  html += `</div>`;
+
+  if (snap.empty) {
+    html += "<em>No segments yet.</em>";
+    segmentListDiv.innerHTML = html;
+    return;
+  }
+
+  snap.forEach(doc => {
+    const data = doc.data();
+    const segmentId = doc.id;
+
+    if (segmentSearchValue) {
+      let found = false;
+      globalConfigFields.forEach(f => {
+        if (data[f.key] && data[f.key].toString().toLowerCase().includes(segmentSearchValue.toLowerCase())) found = true;
+      });
+      if (!found) return;
+    }
+    for (let key in segmentFilters) {
+      if (segmentFilters[key] && data[key] !== segmentFilters[key]) return;
+    }
+
+    html += `
+      <div class="segment-card${selectedSegmentId === segmentId ? " selected" : ""}" 
+        onclick="window.selectSegmentSidebar('${segmentId}')"
+        id="sidebar_segment_${segmentId}">
+        <div class="segment-title" style="display:flex; align-items:center; justify-content:space-between;">
+          <div>
+            ${data.ticketNumber || "(No Ticket #)"}
+            <span class="segment-status ${statusClass(data.status)}">${data.status || ""}</span>
+          </div>
+          <button type="button" class="show-more-btn" style="margin-left:8px;" onclick="event.stopPropagation(); window.toggleSegmentExpand('${segmentId}');">
+            ${expandedSegments[segmentId] ? "Show Less" : "Show More"}
+          </button>
+        </div>
+        <div class="segment-details">
+          <div><b>Location:</b> ${data.location || ""}</div>
+          ${data.workDate ? `<div><b>Work Date:</b> ${data.workDate}</div>` : ""}
+        </div>
+        ${expandedSegments[segmentId] ? `
+          <div class="segment-extra-details" style="margin-top:8px; border-top:1px solid #ddd; padding-top:6px;">
+            ${globalConfigFields.filter(f => f.show).map(f =>
+              `<div><b>${f.label}:</b> ${data[f.key] || ""}</div>`
+            ).join("")}
+            <button onclick="event.stopPropagation(); window.editSegmentGeometry('${segmentId}')" style="margin-top:8px;">✏️ Edit Segment</button>
+            <button onclick="event.stopPropagation(); window.deleteSegment('${segmentId}')" style="color:red; margin-left:8px;">🗑️ Delete Segment</button>
+          </div>
+        ` : ""}
+      </div>
+    `;
+  });
+
+  segmentListDiv.innerHTML = html;
+  setTimeout(() => {
+    document.getElementById('sidebarSegmentSearch').oninput = function() {
+      segmentSearchValue = this.value;
+      loadSegmentListSidebar();
+    };
+    globalConfigFields.filter(f => f.type === "select").forEach(f => {
+      document.getElementById('sidebarFilter_' + f.key).onchange = function() {
+        segmentFilters[f.key] = this.value;
+        loadSegmentListSidebar();
+      };
+    });
+  }, 0);
+}
+
+window.toggleSegmentExpand = function(segmentId) {
+  expandedSegments[segmentId] = !expandedSegments[segmentId];
+  loadSegmentListSidebar();
+}
+
+window.toggleArchivedSegments = function() {
+  showArchivedSegments = !showArchivedSegments;
+  loadSegmentListSidebar();
+};
+
+window.updateSegmentStatus = async function(segmentId, newStatus) {
+  await db.collection("segments").doc(segmentId).update({ status: newStatus });
+  const doc = await db.collection("segments").doc(segmentId).get();
+  logHistory(currentProjectId, `Segment status updated: ${summaryFromFields(doc.data())}`);
+  loadSegments();
+  loadSegmentListSidebar();
+};
+
+window.toggleSegmentArchive = async function(segmentId, archiveVal) {
+  await db.collection("segments").doc(segmentId).update({ archived: archiveVal });
+  const doc = await db.collection("segments").doc(segmentId).get();
+  logHistory(currentProjectId, archiveVal ? `Segment archived: ${summaryFromFields(doc.data())}` : `Segment restored: ${summaryFromFields(doc.data())}`);
+  loadSegments();
+  loadSegmentListSidebar();
+};
+
+window.deleteSegment = async function(segmentId) {
+  if (!confirm("Delete this segment? This cannot be undone.")) return;
+  await db.collection("segments").doc(segmentId).delete();
+  logHistory(currentProjectId, "Segment deleted.");
+  loadSegments();
+  loadSegmentListSidebar();
+};
+
+// ==== MESSAGES & HISTORY PANEL LOGIC ====
+// (Unchanged from your current code. If you need this section again, let me know!)
+
+// Sidebar collapse logic
+window.toggleSidebar = function() {
+  const sidebar = document.getElementById('sidebar');
+  const btn = document.getElementById('collapseBtn');
+  sidebar.classList.toggle('collapsed');
+  if (sidebar.classList.contains('collapsed')) {
+    btn.innerHTML = '&#9654;';
+  } else {
+    btn.innerHTML = '&#9664;';
+  }
+}
+
+// ==== Initial Load ====
+window.onload = async function() {
+  await loadGlobalConfig();
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlProjectId = urlParams.get("projectId");
+  if (urlProjectId) {
+    switchProject(urlProjectId);
+    document.getElementById('projectMenu').style.display = 'none';
+    document.getElementById('projectHeader').style.display = 'flex';
+  } else {
+    document.getElementById('projectMenu').style.display = '';
+    document.getElementById('projectHeader').style.display = 'none';
+    loadProjectList();
+  }
+};
+
+function summaryFromFields(obj) {
+  let txt = [];
+  for (const field of globalConfigFields) {
+    if (field.key && obj[field.key] && field.show) {
+      txt.push(`${field.label}: ${obj[field.key]}`);
+    }
+  }
+  return txt.join(" / ");
+}
+
+function logHistory(projectId, eventText) {
+  if (!projectId) return;
+  db.collection("projects").doc(projectId).collection("history").add({
+    event: eventText,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+    user: "User"
+  });
+}
