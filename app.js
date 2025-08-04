@@ -106,6 +106,11 @@ window.toggleArchiveProject = async function(projectId, isActive) {
   logHistory(projectId, isActive ? "Project archived." : "Project restored.");
   loadProjectList();
 };
+function closePanels() {
+  document.getElementById('messagesPanel').style.display = 'none';
+  document.getElementById('historyPanel').style.display = 'none';
+  document.getElementById('segmentList').style.display = '';
+}
 
 window.switchProject = function(projectId) {
   closePanels();
