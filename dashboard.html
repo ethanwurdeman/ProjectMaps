@@ -5,30 +5,48 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; background: #f8f8f8; }
-    h2 { margin-bottom: 20px; }
-    input, button, select { padding: 10px; margin: 5px; }
-    .project-item {
-      background: #fff;
-      padding: 10px;
-      margin: 10px 0;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .project-controls {
-      display: flex;
-      gap: 8px;
+    body {
+      font-family: Arial, sans-serif;
+      padding: 30px 0 0 0;
+      background: #f8f8f8;
+      min-height: 100vh;
+      margin: 0;
     }
     #statusBar {
       position: fixed;
-      top: 0; right: 0;
-      padding: 10px;
-      background: #eee;
-      font-size: 0.9em;
+      top: 0; right: 0; left: 0;
+      padding: 13px 26px 13px 10px;
+      background: #fafafa;
+      border-bottom: 1px solid #e0e0e0;
+      font-size: 1em;
+      z-index: 500;
     }
+    h2 {
+      margin-bottom: 20px;
+      margin-top: 18px;
+      margin-left: 36px;
+      color: #1a237e;
+    }
+    .dashboard-container {
+      max-width: 700px;
+      margin: 0 auto;
+      margin-top: 65px;
+    }
+    input, button, select {
+      padding: 9px 12px;
+      margin: 5px 2px 5px 0;
+      font-size: 1em;
+      border-radius: 4px;
+      border: 1px solid #bbb;
+    }
+    button {
+      cursor: pointer;
+      background: #e8eaf6;
+      font-weight: 500;
+      transition: background 0.14s;
+      border: 1px solid #d1d1d1;
+    }
+    button:hover { background: #e3f2fd; }
     #userMgmtBtn {
       background: #1976d2;
       color: #fff;
@@ -38,32 +56,104 @@
       padding: 10px 18px;
       cursor: pointer;
       font-weight: bold;
-      display: none; /* hidden by default, shown by JS if admin */
+      display: none;
     }
     #userMgmtBtn:hover {
       background: #135ba1;
+    }
+    .create-project-row {
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-left: 36px;
+    }
+    .project-filter-row {
+      margin-bottom: 16px;
+      margin-left: 36px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    #projectList {
+      margin-top: 25px;
+    }
+    .project-item {
+      background: #fff;
+      border-radius: 10px;
+      border: 2px solid #e0e0e0;
+      padding: 18px 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 7px 0 rgba(0,0,0,0.03);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: border 0.19s, box-shadow 0.18s;
+      gap: 12px;
+    }
+    .project-left {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
+      gap: 2px;
+    }
+    .project-name {
+      font-size: 1.18em;
+      font-weight: bold;
+      color: #273069;
+      margin-bottom: 3px;
+      word-break: break-all;
+    }
+    .project-summary {
+      font-size: 0.98em;
+      color: #444;
+      margin-top: 3px;
+    }
+    .project-controls {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 5px;
+      min-width: 95px;
+    }
+    .open-btn {
+      background: #d1eaff;
+      color: #0d47a1;
+      border: 1px solid #b3c9d9;
+      font-weight: 500;
+    }
+    .open-btn:hover { background: #b3e5fc; }
+    .delete-btn {
+      background: #ffecec;
+      color: #c62828;
+      border: 1px solid #e57373;
+      margin-top: 2px;
+    }
+    .delete-btn:hover { background: #ffdde0; }
+    @media (max-width: 700px) {
+      .dashboard-container { max-width: 98vw; }
+      .project-item { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .project-controls { flex-direction: row; align-items: center; min-width: unset; }
     }
   </style>
 </head>
 <body>
   <div id="statusBar"></div>
-  <h2>📊 Project Dashboard</h2>
-
-  <button id="userMgmtBtn" onclick="window.location='users.html'">User Management</button>
-
-  <div>
-    <input type="text" id="newProjectName" placeholder="New Project Name" />
-    <button onclick="createProject()" id="createProjectBtn">➕ Create Project</button>
+  <div class="dashboard-container">
+    <h2>📊 Project Dashboard</h2>
+    <button id="userMgmtBtn" onclick="window.location='users.html'">User Management</button>
+    <div class="create-project-row">
+      <input type="text" id="newProjectName" placeholder="New Project Name" />
+      <button onclick="createProject()" id="createProjectBtn">➕ Create Project</button>
+    </div>
+    <div class="project-filter-row">
+      <label for="filterSelect" style="font-size:0.98em;color:#555">Filter by Project:</label>
+      <select id="filterSelect" onchange="filterProjects()">
+        <option value="all">All Projects</option>
+      </select>
+    </div>
+    <div id="projectList"><p>Loading projects...</p></div>
   </div>
-
-  <div>
-    <label for="filterSelect">Filter by Project:</label>
-    <select id="filterSelect" onchange="filterProjects()">
-      <option value="all">All Projects</option>
-    </select>
-  </div>
-
-  <div id="projectList"><p>Loading projects...</p></div>
 
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -87,7 +177,6 @@
     let currentUser = null;
     let currentUserRole = null;
 
-    // On page load, check login and role
     document.addEventListener('DOMContentLoaded', function() {
       auth.onAuthStateChanged(async (user) => {
         if (!user) {
@@ -111,11 +200,7 @@
 
     function enableUIForRole(role) {
       const userMgmtBtn = document.getElementById('userMgmtBtn');
-      console.log('Role in enableUIForRole:', role);
-      console.log('userMgmtBtn element:', userMgmtBtn);
-
       if (userMgmtBtn) userMgmtBtn.style.display = (role === "admin") ? '' : 'none';
-
       document.getElementById("newProjectName").style.display = (role === "admin") ? '' : 'none';
       document.getElementById("createProjectBtn").style.display = (role === "admin") ? '' : 'none';
     }
@@ -123,19 +208,23 @@
     async function loadProjects() {
       const list = document.getElementById("projectList");
       const filterSelect = document.getElementById("filterSelect");
-      list.innerHTML = "<h3>📁 Existing Projects</h3>";
+      list.innerHTML = "";
       filterSelect.innerHTML = '<option value="all">All Projects</option>';
 
       try {
         const snapshot = await db.collection("projects").get();
+        const projects = [];
         snapshot.forEach(doc => {
           const data = doc.data();
+          projects.push({ doc, name: data.name });
           const option = document.createElement("option");
           option.value = doc.id;
           option.text = data.name;
           filterSelect.appendChild(option);
-          renderProject(doc);
         });
+        // Sort alphabetically
+        projects.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        for (const { doc } of projects) renderProject(doc);
       } catch (error) {
         list.innerHTML = `<p style="color:red">❌ Error loading projects: ${error.message}</p>`;
       }
@@ -147,13 +236,72 @@
       div.className = "project-item";
       div.dataset.projectId = doc.id;
       div.innerHTML = `
-        <div class="project-controls">
-          <button onclick="goToProject('${doc.id}')">Open</button>
-          <button onclick="deleteProject('${doc.id}', '${data.name}')" ${currentUserRole !== 'admin' ? 'style="display:none"' : ''}>🗑️</button>
+        <div class="project-left">
+          <span class="project-name">${data.name || "(Unnamed Project)"}</span>
+          <div class="project-summary" id="summary_${doc.id}">Loading segment summary...</div>
         </div>
-        <strong>${data.name}</strong>
+        <div class="project-controls">
+          <button class="open-btn" onclick="goToProject('${doc.id}')">Open</button>
+          <button class="delete-btn" onclick="deleteProject('${doc.id}', '${(data.name || '').replace(/'/g, "\\'")}')" ${currentUserRole !== 'admin' ? 'style="display:none"' : ''}>🗑️</button>
+        </div>
       `;
       document.getElementById("projectList").appendChild(div);
+      // Load summary (segment counts, feet, status) for each project
+      loadSegmentSummary(doc.id);
+    }
+
+    async function loadSegmentSummary(projectId) {
+      try {
+        const snap = await db.collection("segments").where("projectId", "==", projectId).get();
+        let countLocated = 0, countNotLocated = 0, countInProgress = 0, feetLocated = 0, feetNotLocated = 0;
+        snap.forEach(doc => {
+          const seg = doc.data();
+          const status = seg.status || "";
+          const geojson = seg.geojson ? JSON.parse(seg.geojson) : null;
+          let feet = 0;
+          if (geojson && geojson.geometry && (geojson.geometry.type === "LineString" || geojson.geometry.type === "Polygon")) {
+            let coords = geojson.geometry.coordinates;
+            if (geojson.geometry.type === "Polygon" && coords.length > 0) coords = coords[0];
+            for (let i = 1; i < coords.length; i++) {
+              const [lng1, lat1] = coords[i - 1];
+              const [lng2, lat2] = coords[i];
+              feet += haversineFeet(lat1, lng1, lat2, lng2);
+            }
+          }
+          if (status === "Located") {
+            countLocated++; feetLocated += feet;
+          } else if (status === "Not Located") {
+            countNotLocated++; feetNotLocated += feet;
+          } else if (status === "In Progress") {
+            countInProgress++;
+          }
+        });
+        const el = document.getElementById("summary_" + projectId);
+        if (el) {
+          el.innerHTML = `
+            <span><b>Total Segments:</b> ${snap.size}</span>
+            &nbsp;|&nbsp; <b>Located:</b> ${countLocated} (${feetLocated.toLocaleString(undefined, {maximumFractionDigits:0})} ft)
+            &nbsp;|&nbsp; <b>Not Located:</b> ${countNotLocated} (${feetNotLocated.toLocaleString(undefined, {maximumFractionDigits:0})} ft)
+            &nbsp;|&nbsp; <b>In Progress:</b> ${countInProgress}
+          `;
+        }
+      } catch (err) {
+        const el = document.getElementById("summary_" + projectId);
+        if (el) el.innerHTML = `<span style="color:red">Failed to load summary</span>`;
+      }
+    }
+
+    // Haversine in FEET (rounded)
+    function haversineFeet(lat1, lon1, lat2, lon2) {
+      const R = 20903520; // radius of earth in feet
+      const toRad = deg => deg * Math.PI / 180;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
     }
 
     async function createProject() {
