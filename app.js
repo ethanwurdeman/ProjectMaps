@@ -109,7 +109,7 @@ window.deleteProject = async function(projectId) {
   await db.collection("projects").doc(projectId).delete();
   const segments = await db.collection("segments").where("projectId", "==", projectId).get();
   segments.forEach(async (doc) => await db.collection("segments").doc(doc.id).delete());
-  logHistory(projectId, Project deleted.);
+logHistory(projectId, "Project deleted.");
   loadProjectList();
 };
 
