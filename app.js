@@ -212,24 +212,24 @@ async function loadProjectList() {
       } catch {}
     });
 
-    html += 
-      <div class="project-item" style="display:flex; align-items:center; justify-content:space-between;">
-        <div style="flex:1">
-          <span style="font-weight:bold">${data.name}</span><br>
-          <small>
-            Total: ${totalFeet} ft | Located: ${locatedFeet} ft | Not Located: ${notLocatedFeet} ft
-          </small>
-        </div>
-        <div style="display:flex;gap:4px;">
-          <button onclick="switchProject('${doc.id}')">Open</button>
-          <button onclick="deleteProject('${doc.id}')">🗑️</button>
-          <button onclick="toggleArchiveProject('${doc.id}', ${!data.archived})">
-            ${!data.archived ? '📥 Archive' : '📤 Restore'}
-          </button>
-        </div>
-      </div>
-    ;
-  }
+ html += `
+  <div class="project-item" style="display:flex; align-items:center; justify-content:space-between;">
+    <div style="flex:1">
+      <span style="font-weight:bold">${data.name}</span><br>
+      <small>
+        Total: ${totalFeet} ft | Located: ${locatedFeet} ft | Not Located: ${notLocatedFeet} ft
+      </small>
+    </div>
+    <div style="display:flex;gap:4px;">
+      <button onclick="switchProject('${doc.id}')">Open</button>
+      <button onclick="deleteProject('${doc.id}')">🗑️</button>
+      <button onclick="toggleArchiveProject('${doc.id}', ${!data.archived})">
+        ${!data.archived ? '📥 Archive' : '📤 Restore'}
+      </button>
+    </div>
+  </div>
+`;
+
   listDiv.innerHTML = html || "<p>No projects found.</p>";
   updateArchiveBtnLabel();
 }
