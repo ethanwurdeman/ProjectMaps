@@ -306,7 +306,7 @@ function getGeojsonLengthFeet(geojson) {
 // ==== Segment Form (Add/Edit) ====
 function segmentFormHtml(fields, values, lengthFeet, editing = false) {
 let html = `<form id="segmentForm">`;
-  if (lengthFeet) html += <div><b>Length:</b> ${lengthFeet}</div>;
+if (lengthFeet) html += `<div><b>Length:</b> ${lengthFeet}</div>`;
   for (const field of fields) {
     if (!field.show) continue;
     const required = field.required ? "required" : "";
