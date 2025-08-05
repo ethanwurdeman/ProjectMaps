@@ -31,12 +31,12 @@ async function loadGlobalConfig() {
     globalConfigFields = doc.data().segmentForm.fields;
   } else {
     globalConfigFields = [
-      { key:"ticketNumber", type:"text", label:"Ticket #", required:false, show:true },
-      { key:"location", type:"text", label:"Location", required:false, show:true },
-      { key:"workDate", type:"date", label:"Work Date", required:false, show:true },
-      { key:"locateDate", type:"date", label:"Locate Date", required:false, show:true },
-      { key:"category", type:"select", label:"Category", options:["HDD","Plow","Missile"], required:false, show:true },
-      { key:"status", type:"select", label:"Status", options:["Not Located","In Progress","Located"], required:false, show:true }
+      { key:"ticketNumber", type:"text", label:"Ticket #", required:true, show:true },
+      { key:"location", type:"text", label:"Location", required:true, show:true },
+      { key:"workDate", type:"date", label:"Work Date", required:true, show:true },
+      { key:"locateDate", type:"date", label:"Locate Date", required:true, show:true },
+      { key:"category", type:"select", label:"Category", options:["HDD","Plow","Missile"], required:true, show:true },
+      { key:"status", type:"select", label:"Status", options:["Not Located","In Progress","Located"], required:true, show:true }
     ];
   }
 }
@@ -367,6 +367,8 @@ function bindSegmentFormSubmit(layer, geojson, segmentId = null) {
     for (const field of globalConfigFields) {
       if (!field.show) continue;
       segData[field.key] = document.getElementById(field.key+"Input").value;
+        if (field.key === "status" && !val) segData[field.key] = "Not Located";
+  else segData[field.key] = val;
     }
     try {
       if (!segmentId) {
