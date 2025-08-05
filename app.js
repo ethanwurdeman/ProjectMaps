@@ -97,13 +97,14 @@ window.createProject = async function() {
       archived: false,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    logHistory(ref.id, Project "${name}" created.);
+    logHistory(ref.id, `Project "${name}" created.`);
     loadProjectList();
     switchProject(ref.id);
   } catch (e) {
     alert("Error creating project: " + e.message);
   }
 };
+
 
 window.deleteProject = async function(projectId) {
   if (!confirm("Are you sure you want to delete this project?")) return;
