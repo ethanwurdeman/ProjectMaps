@@ -387,16 +387,25 @@ function bindSegmentFormSubmit(layer, geojson, segmentId = null) {
 }
 
 // ==== Load Segments on Map ====
+let segmentsUnsubscribe = null;
+
 function loadSegments() {
+  // Remove previous listener if present
+  if (typeof segmentsUnsubscribe === "function") segmentsUnsubscribe();
+
   Object.values(statusLayers).forEach(layer => layer.clearLayers());
   segmentLayerMap = {};
   drawnItems.clearLayers();
   if (!currentProjectId) return;
-  db.collection("segments")
+
+  // Listen for changes!
+  segmentsUnsubscribe = db.collection("segments")
     .where("projectId", "==", currentProjectId)
     .where("archived", "==", false)
-    .get()
-    .then(snap => {
+    .onSnapshot(snap => {
+      Object.values(statusLayers).forEach(layer => layer.clearLayers());
+      segmentLayerMap = {};
+      drawnItems.clearLayers();
       const layersForBounds = [];
       snap.forEach(doc => {
         const data = doc.data();
@@ -445,6 +454,7 @@ function loadSegments() {
       }
     });
 }
+
 
 // ==== Segment List in Sidebar (Card layout, expand/collapse, filters/search) ====
 async function loadSegmentListSidebar() {
