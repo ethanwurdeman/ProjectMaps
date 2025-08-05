@@ -10,6 +10,13 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
+firebase.auth().onAuthStateChanged(async user => {
+  if (!user) window.location.href = "login.html";
+  const userDoc = await db.collection('users').doc(user.uid).get();
+  window.currentUser = userDoc.data();
+});
+
+
 // ==== Utility and State ====
 let currentProjectId = null;
 let showArchived = false;
@@ -298,7 +305,7 @@ function getGeojsonLengthFeet(geojson) {
 
 // ==== Segment Form (Add/Edit) ====
 function segmentFormHtml(fields, values, lengthFeet, editing = false) {
-  let html = <form id="segmentForm">;
+let html = `<form id="segmentForm">`;
   if (lengthFeet) html += <div><b>Length:</b> ${lengthFeet}</div>;
   for (const field of fields) {
     if (!field.show) continue;
