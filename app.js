@@ -45,6 +45,7 @@ async function loadGlobalConfig() {
     ];
   }
 }
+
 function closePanels() {
   document.getElementById('messagesPanel').style.display = 'none';
   document.getElementById('historyPanel').style.display = 'none';
@@ -305,30 +306,30 @@ function getGeojsonLengthFeet(geojson) {
 
 // ==== Segment Form (Add/Edit) ====
 function segmentFormHtml(fields, values, lengthFeet, editing = false) {
-let html = `<form id="segmentForm">`;
-if (lengthFeet) html += `<div><b>Length:</b> ${lengthFeet}</div>`;
+  let html = `<form id="segmentForm">`;
+  if (lengthFeet) html += `<div><b>Length:</b> ${lengthFeet}</div>`;
   for (const field of fields) {
     if (!field.show) continue;
     const required = field.required ? "required" : "";
     const fieldId = field.key + "Input";
     let val = values[field.key] || "";
-    html += <div style="margin-bottom:6px">;
-    html += <strong>${field.label}</strong><br/>;
+    html += `<div style="margin-bottom:6px">`;
+    html += `<strong>${field.label}</strong><br/>`;
     if (field.type === "select") {
-      html += <select id="${fieldId}" name="${field.key}" style="width:100%" ${required}>;
+      html += `<select id="${fieldId}" name="${field.key}" style="width:100%" ${required}>`;
       (field.options || []).forEach(opt => {
-        html += <option value="${opt}" ${val === opt ? "selected" : ""}>${opt}</option>;
+        html += `<option value="${opt}" ${val === opt ? "selected" : ""}>${opt}</option>`;
       });
-      html += </select>;
+      html += `</select>`;
     } else if (field.type === "date") {
-      html += <input type="date" id="${fieldId}" name="${field.key}" style="width:95%" ${required} value="${val}" />;
+      html += `<input type="date" id="${fieldId}" name="${field.key}" style="width:95%" ${required} value="${val}" />`;
     } else {
-      html += <input type="text" id="${fieldId}" name="${field.key}" style="width:95%" ${required} value="${val}" />;
+      html += `<input type="text" id="${fieldId}" name="${field.key}" style="width:95%" ${required} value="${val}" />`;
     }
-    html += </div>;
+    html += `</div>`;
   }
-  html += <button type="submit" style="margin-top:6px;width:100%">${editing ? "Update" : "Submit"}</button>;
-  html += </form>;
+  html += `<button type="submit" style="margin-top:6px;width:100%">${editing ? "Update" : "Submit"}</button>`;
+  html += `</form>`;
   return html;
 }
 
@@ -377,10 +378,10 @@ function bindSegmentFormSubmit(layer, geojson, segmentId = null) {
     try {
       if (!segmentId) {
         await db.collection("segments").add(segData);
-        logHistory(currentProjectId, Segment created: ${summaryFromFields(segData)});
+        logHistory(currentProjectId, `Segment created: ${summaryFromFields(segData)}`);
       } else {
         await db.collection("segments").doc(segmentId).update(segData);
-        logHistory(currentProjectId, Segment updated: ${summaryFromFields(segData)});
+        logHistory(currentProjectId, `Segment updated: ${summaryFromFields(segData)}`);
         editingSegmentId = null;
       }
       loadSegments();
@@ -430,7 +431,7 @@ function loadSegments() {
               if (field.key === "status") {
                 popupHtml += <div><strong>${field.label}:</strong>
                   <select id="popupStatus_${doc.id}" name="${field.key}">
-                    ${(field.options||[]).map(opt => <option value="${opt}" ${data.status === opt ? "selected" : ""}>${opt}</option>).join("")}
+                    ${(field.options||[]).map(opt => `<option value="${opt}" ${data.status === opt ? "selected" : ""}>${opt}</option>`).join("")}
                   </select>
                   <button onclick="window.updateSegmentStatus('${doc.id}', document.getElementById('popupStatus_${doc.id}').value)">Save</button>
                 </div>;
@@ -477,7 +478,7 @@ async function loadSegmentListSidebar() {
   const snap = await query.get();
   segmentLayerMap = {};
 
-  let html = 
+  let html = `
     <h3 style="display:inline">Segments</h3>
     <button onclick="toggleArchivedSegments()" style="float:right;">
       ${showArchivedSegments ? 'Show Active' : 'Show Archived'}
@@ -485,16 +486,17 @@ async function loadSegmentListSidebar() {
     <div style="clear:both"></div>
     <div style="margin-bottom:8px;">
       <input type="text" id="sidebarSegmentSearch" placeholder="Search..." style="width:57%;" value="${segmentSearchValue || ""}">
-  ;
+  `;
+
   globalConfigFields.filter(f => f.type === "select").forEach(f => {
-    html += 
+    html += `
       <select id="sidebarFilter_${f.key}" style="margin-left:4px;">
         <option value="">All ${f.label}</option>
-        ${(f.options||[]).map(opt => <option value="${opt}"${segmentFilters[f.key]===opt ? " selected" : ""}>${opt}</option>).join("")}
+        ${(f.options||[]).map(opt => `<option value="${opt}"${segmentFilters[f.key]===opt ? " selected" : ""}>${opt}</option>`).join("")}
       </select>
-    ;
+    `;
   });
-  html += </div>;
+  html += `</div>`;
 
   if (snap.empty) {
     html += "<em>No segments yet.</em>";
@@ -518,7 +520,7 @@ async function loadSegmentListSidebar() {
     }
 
     html += 
-      <div class="segment-card${selectedSegmentId === segmentId ? " selected" : ""}" 
+      `<div class="segment-card${selectedSegmentId === segmentId ? " selected" : ""}" 
         onclick="window.selectSegmentSidebar('${segmentId}')"
         id="sidebar_segment_${segmentId}">
         <div class="segment-title" style="display:flex; align-items:center; justify-content:space-between;">
@@ -532,19 +534,18 @@ async function loadSegmentListSidebar() {
         </div>
         <div class="segment-details">
           <div><b>Location:</b> ${data.location || ""}</div>
-          ${data.workDate ? <div><b>Work Date:</b> ${data.workDate}</div> : ""}
+          ${data.workDate ? `<div><b>Work Date:</b> ${data.workDate}</div>` : ""}
         </div>
         ${expandedSegments[segmentId] ? 
-          <div class="segment-extra-details" style="margin-top:8px; border-top:1px solid #ddd; padding-top:6px;">
+          `<div class="segment-extra-details" style="margin-top:8px; border-top:1px solid #ddd; padding-top:6px;">
             ${globalConfigFields.filter(f => f.show).map(f =>
-              <div><b>${f.label}:</b> ${data[f.key] || ""}</div>
+              `<div><b>${f.label}:</b> ${data[f.key] || ""}</div>`
             ).join("")}
             <button onclick="event.stopPropagation(); window.editSegmentGeometry('${segmentId}')" style="margin-top:8px;">✏️ Edit Segment</button>
             <button onclick="event.stopPropagation(); window.deleteSegment('${segmentId}')" style="color:red; margin-left:8px;">🗑️ Delete Segment</button>
-          </div>
+          </div>`
          : ""}
-      </div>
-    ;
+      </div>`;
   });
 
   segmentListDiv.innerHTML = html;
@@ -575,7 +576,7 @@ window.toggleArchivedSegments = function() {
 window.updateSegmentStatus = async function(segmentId, newStatus) {
   await db.collection("segments").doc(segmentId).update({ status: newStatus });
   const doc = await db.collection("segments").doc(segmentId).get();
-  logHistory(currentProjectId, Segment status updated: ${summaryFromFields(doc.data())});
+  logHistory(currentProjectId, `Segment status updated: ${summaryFromFields(doc.data())}`);
   loadSegments();
   loadSegmentListSidebar();
 };
@@ -583,7 +584,7 @@ window.updateSegmentStatus = async function(segmentId, newStatus) {
 window.toggleSegmentArchive = async function(segmentId, archiveVal) {
   await db.collection("segments").doc(segmentId).update({ archived: archiveVal });
   const doc = await db.collection("segments").doc(segmentId).get();
-  logHistory(currentProjectId, archiveVal ? Segment archived: ${summaryFromFields(doc.data())} : Segment restored: ${summaryFromFields(doc.data())});
+  logHistory(currentProjectId, archiveVal ? `Segment archived: ${summaryFromFields(doc.data())}` : `Segment restored: ${summaryFromFields(doc.data())}`);
   loadSegments();
   loadSegmentListSidebar();
 };
@@ -615,24 +616,28 @@ window.toggleSidebar = function() {
 function renderMessagesPanel() {
   if (!currentProjectId) return;
   const div = document.getElementById('messagesPanel');
-  div.innerHTML = 
-    <button class="panel-close-btn" onclick="showSegments()" title="Close">&times;</button>
-    <h3>💬 Messages</h3>
-    <div id="chatMessages"></div>
-    <textarea id="newMsg" rows="2" style="width:98%" placeholder="Type message..."></textarea>
-    <button onclick="sendMessage()" style="margin-top:3px;width:50%;">Send</button>
-  ;
+  div.innerHTML = `
+    <div>
+      <button class="panel-close-btn" onclick="showSegments()" title="Close">&times;</button>
+      <h3>💬 Messages</h3>
+      <div id="chatMessages"></div>
+      <textarea id="newMsg" rows="2" style="width:98%" placeholder="Type message..."></textarea>
+      <button onclick="sendMessage()" style="margin-top:3px;width:50%;">Send</button>
+    </div>
+  `;
   loadMessages();
 }
 
 function renderHistoryPanel() {
   if (!currentProjectId) return;
   const div = document.getElementById('historyPanel');
-  div.innerHTML = 
-    <button class="panel-close-btn" onclick="showSegments()" title="Close">&times;</button>
-    <h3>📜 Project History</h3>
-    <div id="historyLog"></div>
-  ;
+  div.innerHTML = `
+    <div>
+      <button class="panel-close-btn" onclick="showSegments()" title="Close">&times;</button>
+      <h3>📜 Project History</h3>
+      <div id="historyLog"></div>
+    </div>
+  `;
   loadHistory();
 }
 function loadMessages() {
@@ -647,14 +652,14 @@ function loadMessages() {
         let ts = "";
         if (m.timestamp && typeof m.timestamp.toDate === "function") {
           const d = m.timestamp.toDate();
-          ts = ${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})};
+          ts = d.toLocaleDateString() + " " + d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         }
         html += 
-          <div style="margin-bottom:6px;">
+          `<div style="margin-bottom:6px;">
             <span style="color:#1976d2;font-weight:bold;">${m.user || 'User'}</span>
             <span style="color:#999;font-size:0.95em;margin-left:5px;">${ts}</span>
             <br>${m.text}
-          </div>;
+          </div>`;
       });
       div.innerHTML = html || '<em>No messages yet.</em>';
       div.scrollTop = div.scrollHeight;
@@ -691,7 +696,7 @@ function summaryFromFields(obj) {
   let txt = [];
   for (const field of globalConfigFields) {
     if (field.key && obj[field.key] && field.show) {
-      txt.push(${field.label}: ${obj[field.key]});
+      txt.push(`${field.label}: ${obj[field.key]}`);
     }
   }
   return txt.join(" / ");
@@ -704,4 +709,4 @@ function logHistory(projectId, eventText) {
     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
     user: "User"
   });
-}
+}}
